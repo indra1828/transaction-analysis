@@ -1,0 +1,14 @@
+import { useContext } from "react";
+
+import { AuthContext } from "./authContext";
+import type { AuthValue } from "./authContext";
+
+export function useAuth(): AuthValue {
+  const value = useContext(AuthContext);
+
+  if (!value) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
+  return value;
+}

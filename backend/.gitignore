@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.env
+*.db*
+
+# Environment and local data
+.env.*
+!.env.example
+*.log
+.coverage
+htmlcov/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
