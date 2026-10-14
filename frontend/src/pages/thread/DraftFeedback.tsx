@@ -6,7 +6,7 @@ import type { TurnRevision } from "../../api";
 interface DraftFeedbackProps {
   revision: TurnRevision; // the latest version of the draft
   disabled: boolean;
-  onUse: (text: string) => void; // put the suggested wording into the reply bar
+  onUse: () => void; // make the suggested wording the draft, with no new review
   onSend: () => void; // send the draft to the character
 }
 
@@ -32,7 +32,8 @@ export function DraftFeedback({ revision, disabled, onUse, onSend }: DraftFeedba
           <p className="text-sm leading-relaxed text-ink">“{feedback.suggested_response}”</p>
           <button
             type="button"
-            onClick={() => onUse(feedback.suggested_response)}
+            onClick={onUse}
+            disabled={disabled}
             className={buttonClasses("text", "self-start text-sm")}
           >
             Use this instead

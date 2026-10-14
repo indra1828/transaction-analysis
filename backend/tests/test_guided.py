@@ -75,6 +75,28 @@ def test_revisions_are_kept(login, api):
     assert len(api.messages(owner, thread_id)) == 1
 
 
+def test_using_the_suggestion_makes_it_the_final_wording_without_review(
+    login, api, fake_llm
+):
+    owner, thread_id = guided(login, api)
+    turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
+    suggested = turn["revisions"][0]["feedback"]["suggested_response"]
+    fake_llm.structured_calls = 0
+
+    used = owner.post(f"{turns(owner, thread_id)}/{turn['id']}/use-suggestion")
+
+    assert used.status_code == 200
+    assert fake_llm.structured_calls == 0  # no second coach review
+    latest = used.json()["revisions"][-1]
+    assert latest["content"] == suggested
+    assert latest["feedback"]["acceptable"] is True
+    assert latest["feedback"]["suggested_response"] == suggested
+
+    accepted = owner.post(f"{turns(owner, thread_id)}/{turn['id']}/accept")
+    assert "message.completed" in accepted.text
+    assert api.messages(owner, thread_id)[1]["content"] == suggested
+
+
 def test_accept_sends_latest_wording_and_triggers_the_reply(login, api):
     owner, thread_id = guided(login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()

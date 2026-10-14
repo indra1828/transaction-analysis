@@ -119,6 +119,34 @@ async def revise_turn(
     return turn
 
 
+@router.post("/{turn_id}/use-suggestion", response_model=TurnResponse)
+def use_suggestion(turn: OpenTurn, db: DbSession):
+    """Make the coach's suggested wording the draft. The coach does not review it again."""
+    latest = turn.revisions[-1]["feedback"]
+    suggested = latest["suggested_response"].strip()
+
+    if not suggested:
+        raise HTTPException(409, "There is no suggested wording to use")
+
+    # The suggestion is the final wording, so it is recorded as acceptable.
+    revision = {
+        "content": suggested,
+        "feedback": {
+            "acceptable": True,
+            "feedback": "You used the coach's wording. Send it when you are ready.",
+            "ta_note": latest["ta_note"],
+            "suggested_response": suggested,
+        },
+    }
+
+    # A new list, so SQLAlchemy sees the JSON change.
+    turn.revisions = [*turn.revisions, revision]
+    db.commit()
+    db.refresh(turn)
+
+    return turn
+
+
 @router.post("/{turn_id}/accept", response_class=EventSourceResponse)
 async def accept_turn(
     turn: OpenTurn, thread: GuidedThread

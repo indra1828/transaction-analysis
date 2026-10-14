@@ -56,5 +56,8 @@ export const createTurn = (id: string, content: string) =>
   request<Turn>("POST", `/threads/${id}/turns`, { content });
 export const reviseTurn = (id: string, turnId: string, content: string) =>
   request<Turn>("POST", `/threads/${id}/turns/${turnId}/revise`, { content });
-export const streamAcceptTurn = (id: string, turnId: string, handlers: StreamHandlers) =>
+// Makes the coach's suggestion the draft. The server does not review it again.
+export const adoptSuggestion = (id: string, turnId: string) =>
+  request<Turn>("POST", `/threads/${id}/turns/${turnId}/use-suggestion`);
+export const streamAcceptTurn =(id: string, turnId: string, handlers: StreamHandlers) =>
   postStream(`/threads/${id}/turns/${turnId}/accept`, undefined, handlers);

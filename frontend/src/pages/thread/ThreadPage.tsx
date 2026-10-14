@@ -16,6 +16,7 @@ import {
   listTurns,
   reviseTurn,
   streamAcceptTurn,
+  adoptSuggestion,
   streamEditMessage,
   streamMessage,
   type Message,
@@ -164,6 +165,15 @@ export function ThreadPage() {
     if (openDraft) void stream(null, (handlers) => streamAcceptTurn(id, openDraft.id, handlers));
   };
 
+  // Adopts the coach's wording as the draft. It is not sent to the coach again,
+  // so the learner can send it straight away.
+  const adoptSuggestedWording = async () => {
+    if (!openDraft) return;
+
+    const saved = await runAction(() => adoptSuggestion(id, openDraft.id));
+    if (saved) setReply("");
+  };
+
   const placeholder = !guided
     ? "Type your reply"
     : openDraft
@@ -223,7 +233,7 @@ export function ThreadPage() {
           <DraftFeedback
             revision={openDraft.revisions[openDraft.revisions.length - 1]}
             disabled={busy}
-            onUse={setReply}
+            onUse={() => void adoptSuggestedWording()}
             onSend={sendDraft}
           />
         )}

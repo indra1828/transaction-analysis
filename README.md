@@ -59,6 +59,3 @@ cd frontend && npm test
 - [Frontend guide](frontend/README.md): routes, scripts, design notes, and live browser tests
 - [Backend specification](backend/docs/implementation-spec.md): the original design the code was built from
 
-## Status
-
-This is a working prototype for a seminar demo. Known limits are listed in the backend and frontend guides.
