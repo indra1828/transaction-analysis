@@ -5,6 +5,7 @@ import type {
   Mode,
   Scenario,
   ScenarioConfig,
+  ScenarioUpdate,
   ScenarioDraft,
   ScenarioDraftInput,
   StreamHandlers,
@@ -27,6 +28,10 @@ export const createScenario = (title: string, config: ScenarioConfig) =>
   request<Scenario>("POST", "/scenarios", { title, config });
 export const draftScenario = (input: ScenarioDraftInput) =>
   request<ScenarioDraft>("POST", "/scenarios/draft", input);
+// Only for scenarios the user created. Built-in scenarios are refused.
+export const updateScenario = (id: string, changes: ScenarioUpdate) =>
+  request<Scenario>("PATCH", `/scenarios/${id}`, changes);
+export const deleteScenario = (id: string) => request<void>("DELETE", `/scenarios/${id}`);
 
 // Threads (conversations)
 export const listThreads = () => request<Thread[]>("GET", "/threads");

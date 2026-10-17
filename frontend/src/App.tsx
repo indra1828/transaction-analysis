@@ -5,6 +5,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./components/AppShell";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { DashboardPage } from "./pages/DashboardPage";
+import { EditScenarioPage } from "./pages/EditScenarioPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewScenarioPage } from "./pages/NewScenarioPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -24,6 +25,7 @@ export default function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="scenarios/new" element={<NewScenarioPage />} />
                 <Route path="scenarios/:id" element={<ScenarioPage />} />
+                <Route path="scenarios/:id/edit" element={<EditScenarioPage />} />
                 <Route path="threads/:id" element={<ThreadPage />} />
                 <Route path="threads/:id/report" element={<ReportPage />} />
               </Route>

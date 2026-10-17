@@ -34,6 +34,22 @@ class ScenarioDraft(BaseModel):
 GoalPoint = Annotated[str, StringConstraints(min_length=1, max_length=200)]
 
 
+class ScenarioConfigUpdate(BaseModel):
+    """Fields to change in a scenario. Fields left out keep their current value."""
+
+    persona: str | None = Field(default=None, min_length=1, max_length=2000)
+    user_role: str | None = Field(default=None, min_length=1, max_length=120)
+    context: str | None = Field(default=None, min_length=1, max_length=2000)
+    objectives: list[GoalPoint] | None = Field(default=None, min_length=1, max_length=8)
+    stopping_conditions: list[GoalPoint] | None = Field(default=None, min_length=1, max_length=8)
+    opening_line: str | None = Field(default=None, min_length=1, max_length=1000)
+
+
+class ScenarioUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=180)
+    config: ScenarioConfigUpdate | None = None
+
+
 class ScenarioDraftRequest(BaseModel):
     """The learner's answers. The model fills in the rest of the scenario."""
 

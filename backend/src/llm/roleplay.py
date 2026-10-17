@@ -9,9 +9,9 @@ from llm.prompts.roleplay_character import ROLEPLAY_CHARACTER
 from llm.prompts.roleplay_opening import ROLEPLAY_OPENING
 
 END = object()  # yielded by stream_reply when the scenario has concluded
-# The character may not end the scene before the learner has had this many
-# messages. A stray end marker earlier is removed from the reply.
-MIN_LEARNER_MESSAGES_BEFORE_END = 3
+# The character may not signal an ending before the learner has had this many
+# messages, so the conversation has room to develop. An earlier marker is removed.
+MIN_LEARNER_MESSAGES_BEFORE_END = 8
 
 
 def _agent(snapshot: dict):

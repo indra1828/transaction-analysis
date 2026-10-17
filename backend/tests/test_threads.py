@@ -213,20 +213,35 @@ def test_max_turns_completes_the_thread(login, api):
     assert api.send(owner, thread_id).status_code == 409
 
 
-def test_scenario_completion_marker_ends_the_thread(login, api, fake_llm):
+def test_scenario_completion_marker_only_offers_to_finish(login, api, fake_llm):
+    from llm.roleplay import MIN_LEARNER_MESSAGES_BEFORE_END
+
     owner, thread_id = started(login, api)
-    api.send(owner, thread_id, "One")
-    api.send(owner, thread_id, "Two")
+    for number in range(MIN_LEARNER_MESSAGES_BEFORE_END - 1):
+        api.send(owner, thread_id, f"Message {number}")
     fake_llm.tokens = ["Thanks, ", "agreed.", " [[E", "ND]]"]
 
-    response = api.send(owner, thread_id, "Three")
+    response = api.send(owner, thread_id, "Final point")
 
     assert "scenario_completed" in response.text
     assert "[[" not in response.text and "END" not in response.text
     assert api.messages(owner, thread_id)[-1]["content"] == ("Thanks, agreed.")
-    assert owner.get(f"{API}/threads/{thread_id}").json()["status"] == (
-        "completed"
-    )
+    # The conversation stays open until the learner chooses to finish.
+    assert owner.get(f"{API}/threads/{thread_id}").json()["status"] == "active"
+
+    fake_llm.tokens = ["Let's keep going."]
+    assert "message.completed" in api.send(owner, thread_id, "Still talking").text
+
+
+def test_completion_marker_is_ignored_before_the_minimum_exchanges(login, api, fake_llm):
+    from llm.roleplay import MIN_LEARNER_MESSAGES_BEFORE_END
+
+    owner, thread_id = started(login, api)
+    fake_llm.tokens = ["Fine, ", "let's talk.", " [[END]]"]
+
+    for number in range(MIN_LEARNER_MESSAGES_BEFORE_END - 1):
+        response = api.send(owner, thread_id, f"Message {number}")
+        assert "scenario_completed" not in response.text
 
 
 def test_early_completion_marker_is_ignored(login, api, fake_llm):

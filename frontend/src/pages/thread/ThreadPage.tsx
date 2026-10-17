@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { Alert } from "../../components/Alert";
 import { Badge } from "../../components/Badge";
 import { BackLink } from "../../components/BackLink";
 import { Button } from "../../components/Button";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { buttonClasses } from "../../components/buttonStyles";
 import { Spinner } from "../../components/Spinner";
 import {
@@ -20,6 +21,7 @@ import {
   streamEditMessage,
   streamMessage,
   type Message,
+  type StreamDone,
   type StreamHandlers,
   type Thread,
   type Turn,
@@ -67,6 +69,10 @@ export function ThreadPage() {
   const [pending, setPending] = useState<PendingReply | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [ending, setEnding] = useState(false);
+  // The character has reached a closing condition: ask whether to finish.
+  const [endOffered, setEndOffered] = useState(false);
+  // Once the learner has chosen to keep talking, do not ask again on this visit.
+  const keptTalking = useRef(false);
 
   // Runs one streamed reply, then reloads the saved history. The backend
   // removes the learner's message again if the reply fails, so the reload
@@ -76,12 +82,14 @@ export function ThreadPage() {
       setActionError(null);
       setPending({ user, reply: "" });
 
-      const outcome: { error: string | null } = { error: null };
+      const outcome: { error: string | null; done: StreamDone | null } = { error: null, done: null };
 
       try {
         await open({
           onDelta: (content) => setPending((p) => (p ? { ...p, reply: p.reply + content } : p)),
-          onDone: () => undefined,
+          onDone: (done) => {
+            outcome.done = done;
+          },
           onError: (detail) => {
             outcome.error = detail;
           },
@@ -93,6 +101,11 @@ export function ThreadPage() {
       await reload();
       setPending(null);
       setActionError(outcome.error);
+
+      // A closing condition does not end the conversation; the learner decides.
+      if (outcome.done?.completion_reason === "scenario_completed" && !keptTalking.current) {
+        setEndOffered(true);
+      }
 
       return outcome.error === null;
     },
@@ -257,6 +270,25 @@ export function ThreadPage() {
           </div>
         )}
       </section>
+
+      {endOffered && active && (
+        <ConfirmDialog
+          title="The scenario has reached its ending"
+          text="The AI character's side of the conversation has reached the point where it could end. Finish now to get your report, or keep talking to explore it further."
+          confirmLabel="Finish and get report"
+          pendingLabel="Creating report…"
+          cancelLabel="Keep talking"
+          tone="primary"
+          onConfirm={async () => {
+            setEndOffered(false);
+            await endConversation();
+          }}
+          onCancel={() => {
+            keptTalking.current = true;
+            setEndOffered(false);
+          }}
+        />
+      )}
     </div>
   );
 }

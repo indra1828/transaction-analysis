@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
+import { deleteThread } from "../api";
 import type { Thread } from "../api";
 import { MODE_LABEL, STATUS_LABEL, formatDate } from "../lib/format";
 import { Badge } from "./Badge";
-import { DeleteConfirm } from "./DeleteConversation";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { RowMenu } from "./RowMenu";
 
 interface ConversationRowProps {
@@ -48,7 +49,17 @@ export function ConversationRow({ thread, title, onDeleted }: ConversationRowPro
       </div>
 
       {confirming && (
-        <DeleteConfirm threadId={thread.id} onDeleted={onDeleted} onCancel={() => setConfirming(false)} />
+        <ConfirmDialog
+          title="Delete this conversation?"
+          text="This permanently removes the conversation, its report and any branches made from it. This cannot be undone."
+          confirmLabel="Yes, delete"
+          pendingLabel="Deleting…"
+          onConfirm={async () => {
+            await deleteThread(thread.id);
+            onDeleted();
+          }}
+          onCancel={() => setConfirming(false)}
+        />
       )}
     </li>
   );

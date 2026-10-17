@@ -37,6 +37,12 @@ export interface ScenarioDraftInput {
   feedback?: string; // what should change
 }
 
+// Only the fields being changed need to be sent.
+export interface ScenarioUpdate {
+  title?: string;
+  config?: Partial<ScenarioConfig>;
+}
+
 export type Mode = "simulation" | "guided";
 
 export interface Thread {

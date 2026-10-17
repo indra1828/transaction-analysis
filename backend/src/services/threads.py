@@ -22,7 +22,7 @@ LOCK_TIMEOUT = timedelta(seconds=120)
 
 
 def default_max_turns() -> int:
-    return int(os.getenv("MAX_TURNS", "10"))
+    return int(os.getenv("MAX_TURNS", "20"))
 
 
 def get_thread(db, thread_id: str, user_id: str) -> Thread:
@@ -249,13 +249,13 @@ async def reply_events(
             )
             db.add(reply)
 
+            # A closing condition only tells the learner it may be time to finish.
+            # The conversation stays open until they choose to finish it.
             reason = None
             if ended:
                 reason = "scenario_completed"
             elif count_user_messages(db, thread_id) >= thread.max_turns:
                 reason = "max_turns"
-
-            if reason:
                 thread.status = "completed"
 
             db.commit()

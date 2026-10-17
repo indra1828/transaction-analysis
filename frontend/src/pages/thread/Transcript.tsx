@@ -42,7 +42,7 @@ export function Transcript({ messages, pending, canEdit, onEdit }: TranscriptPro
         message.role === "user" ? (
           <UserMessage key={message.id} message={message} canEdit={canEdit} onEdit={onEdit} />
         ) : (
-          <CharacterBubble key={message.id} text={message.content} />
+          <ChatbotBubble key={message.id} text={message.content} />
         ),
       )}
 
@@ -53,7 +53,7 @@ export function Transcript({ messages, pending, canEdit, onEdit }: TranscriptPro
               <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">{pending.user}</p>
             </UserBubble>
           )}
-          <CharacterBubble text={pending.reply} streaming />
+          <ChatbotBubble text={pending.reply} streaming />
         </>
       )}
     </div>
@@ -69,10 +69,10 @@ function UserBubble({ children, wide = false }: { children: ReactNode; wide?: bo
   );
 }
 
-function CharacterBubble({ text, streaming = false }: { text: string; streaming?: boolean }) {
+function ChatbotBubble({ text, streaming = false }: { text: string; streaming?: boolean }) {
   return (
     <div className="flex max-w-[80%] flex-col items-start gap-2 self-start">
-      <span className="text-xs font-medium text-muted">Character</span>
+      <span className="text-xs font-medium text-muted">AI Chatbot</span>
       <div className="rounded-2xl rounded-bl-md border border-hairline bg-canvas px-4 py-3">
         <p className="whitespace-pre-wrap text-base leading-relaxed text-body">
           {text}

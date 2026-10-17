@@ -21,9 +21,10 @@ plain language, and introduce a TA term only when it helps the learner.
 </scenario>
 
 <whose_words>
-The transcript labels each message USER (the learner) or AI (the character).
+The transcript labels each message USER (the learner) or AI (the AI character).
 - The report is about the learner. Analyse only what the USER messages say and \
-how they say it.
+how they say it. When the report refers to the other person, call them the \
+AI character.
 - AI messages are context only. Never quote them as the learner's words, never \
 credit the learner with a plan, proposal, apology or solution that appears \
 only in an AI message, and never describe the character's ideas as the \
@@ -44,8 +45,9 @@ solution has not led it. Say so plainly and kindly.
 Read the whole transcript before writing.
 
 Scope
-- Analyse only the practice conversation about the scenario. If a USER message \
-is off-topic, leave it out of the analysis.
+- Analyse the whole practice conversation. Greetings, small talk and social \
+remarks are part of how the learner speaks, so they can be analysed too. Leave \
+out only messages with nothing to do with the conversation.
 
 Observations
 - ego_state_cues: the learner's most informative messages, at most five. Each \

@@ -1,4 +1,4 @@
-import type { ScenarioConfig, ScenarioDraft, ScenarioDraftInput } from "../api";
+import type { Scenario, ScenarioConfig, ScenarioDraft, ScenarioDraftInput, ScenarioUpdate } from "../api";
 
 // The answers the person gives. The assistant writes everything else.
 export interface ScenarioAnswers {
@@ -17,10 +17,10 @@ export const EMPTY_ANSWERS: ScenarioAnswers = {
   goals: "",
 };
 
-// The draft as text, so every part of it can be edited in the review step.
-// Lists are one item per line.
+// A scenario as text, so every part of it can be edited. Lists are one item per line.
 export interface DraftText {
   title: string;
+  yourRole: string; // You are
   persona: string;
   context: string;
   objectives: string;
@@ -43,18 +43,14 @@ export function goalList(answers: ScenarioAnswers): string[] {
 export function validateAnswers(answers: ScenarioAnswers): string | null {
   if (!answers.title.trim()) return "Give the scenario a name.";
   if (!answers.yourRole.trim()) return "Tell us which role you are.";
-  if (!answers.theirRole.trim()) return "Tell us which role the character plays.";
+  if (!answers.theirRole.trim()) return "Tell us which role the AI character plays.";
   if (!answers.situation.trim()) return "Describe the scenario.";
   if (goalList(answers).length === 0) return "Add at least one goal.";
 
   return null;
 }
 
-export function toDraftInput(
-  answers: ScenarioAnswers,
-  current?: DraftText,
-  feedback?: string,
-): ScenarioDraftInput {
+export function toDraftInput(answers: ScenarioAnswers, current?: DraftText, feedback?: string): ScenarioDraftInput {
   const input: ScenarioDraftInput = {
     title: answers.title.trim(),
     situation: answers.situation.trim(),
@@ -64,7 +60,7 @@ export function toDraftInput(
   };
 
   if (current) {
-    input.current = textToDraft(current, answers.yourRole.trim());
+    input.current = textToDraft(current);
   }
 
   if (feedback?.trim()) {
@@ -75,22 +71,33 @@ export function toDraftInput(
 }
 
 export function draftToText(draft: ScenarioDraft): DraftText {
+  return configToText(draft.title, draft.config);
+}
+
+// The text form of a saved scenario, for editing it. Missing parts start empty.
+export function scenarioToText(scenario: Scenario): DraftText {
+  return configToText(scenario.title, scenario.config);
+}
+
+function configToText(title: string, config: Partial<ScenarioConfig>): DraftText {
   return {
-    title: draft.title,
-    persona: draft.config.persona,
-    context: draft.config.context,
-    objectives: draft.config.objectives.join("\n"),
-    stoppingConditions: draft.config.stopping_conditions.join("\n"),
-    openingLine: draft.config.opening_line,
+    title,
+    yourRole: config.user_role ?? "",
+    persona: config.persona ?? "",
+    context: config.context ?? "",
+    objectives: (config.objectives ?? []).join("\n"),
+    stoppingConditions: (config.stopping_conditions ?? []).join("\n"),
+    openingLine: config.opening_line ?? "",
   };
 }
 
 // Returns a message for the first problem in the reviewed draft, or null.
 export function validateDraft(text: DraftText): string | null {
   if (!text.title.trim()) return "Give the scenario a name.";
-  if (!text.persona.trim()) return "Describe the character.";
+  if (!text.yourRole.trim()) return "Tell us which role you are.";
+  if (!text.persona.trim()) return "Describe the AI character.";
   if (!text.context.trim()) return "Describe the scenario.";
-  if (!text.openingLine.trim()) return "Write the character's opening line.";
+  if (!text.openingLine.trim()) return "Write the AI character's opening line.";
   if (lines(text.objectives).length === 0) return "Keep at least one goal.";
   if (lines(text.stoppingConditions).length === 0) return "Keep at least one 'ends when' condition.";
 
@@ -98,15 +105,23 @@ export function validateDraft(text: DraftText): string | null {
 }
 
 // The scenario in the shape the backend stores.
-export function textToDraft(text: DraftText, yourRole: string): ScenarioDraft {
-  const config: ScenarioConfig = {
+export function textToDraft(text: DraftText): ScenarioDraft {
+  return { title: text.title.trim(), config: textToConfig(text) };
+}
+
+// The changes to save when a scenario is edited. Every field is sent, so the
+// saved scenario matches the form exactly.
+export function textToUpdate(text: DraftText): ScenarioUpdate {
+  return { title: text.title.trim(), config: textToConfig(text) };
+}
+
+function textToConfig(text: DraftText): ScenarioConfig {
+  return {
     persona: text.persona.trim(),
-    user_role: yourRole,
+    user_role: text.yourRole.trim(),
     context: text.context.trim(),
     objectives: lines(text.objectives),
     stopping_conditions: lines(text.stoppingConditions),
     opening_line: text.openingLine.trim(),
   };
-
-  return { title: text.title.trim(), config };
 }

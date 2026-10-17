@@ -24,7 +24,7 @@ function renderAt(path: string) {
 }
 
 function countCharacterBubbles(): number {
-  return screen.queryAllByText("Character").length;
+  return screen.queryAllByText("AI Chatbot").length;
 }
 
 async function waitForCharacterReplies(count: number) {
@@ -127,9 +127,9 @@ suite("live end-to-end", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByText(/Ready to send|Could be stronger/, {}, SLOW)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send to character" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send to AI character" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Send to character" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send to AI character" }));
 
     await waitForCharacterReplies(2);
     await waitUntilIdle();
@@ -176,7 +176,7 @@ suite("live end-to-end", () => {
     const unique = `Vendor escalation ${Date.now()}`;
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: unique } });
     fireEvent.change(screen.getByLabelText("You are"), { target: { value: "Procurement lead" } });
-    fireEvent.change(screen.getByLabelText("The character"), {
+    fireEvent.change(screen.getByLabelText("AI Character"), {
       target: { value: "Vendor account lead who is polite but defensive" },
     });
     fireEvent.change(screen.getByLabelText("Scenario"), {

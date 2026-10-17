@@ -159,11 +159,22 @@ function ReportView({
     color: EGO_COLOR[state],
   }));
 
-  // The PDF library loads only when the learner asks for the file.
-  const download = async () => {
-    const { downloadFile, reportFileName, reportToPdf } = await import("../lib/reportFile");
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
-    downloadFile(reportFileName(scenarioTitle, date), reportToPdf({ scenarioTitle, date, report, quoteOf: text }));
+  // Builds the PDF in the browser and starts the download. The PDF library
+  // loads only when the learner asks for the file.
+  const download = async () => {
+    setDownloadError(null);
+
+    try {
+      const { downloadFile, reportFileName, reportToPdf } = await import("../lib/reportPdf");
+      const file = await reportToPdf({ scenarioTitle, date, report, quoteOf: text });
+
+      downloadFile(reportFileName(scenarioTitle, date), file);
+    } catch (err) {
+      console.error("Report download failed", err);
+      setDownloadError("The report could not be prepared for download. Please try again.");
+    }
   };
 
   return (
@@ -175,6 +186,7 @@ function ReportView({
             Download report
           </Button>
         </div>
+        {downloadError && <Alert>{downloadError}</Alert>}
         <p className="text-xs font-medium uppercase tracking-widest text-muted">
           Report · {formatDate(date)}
         </p>

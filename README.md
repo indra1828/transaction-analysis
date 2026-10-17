@@ -5,7 +5,7 @@ Practise difficult workplace conversations with an AI character, then get a tent
 ## What it does
 
 - **Scenarios:** pick a built-in scenario or create your own in a few answers. The assistant writes the character's opening line and when the conversation ends.
-- **Simulation:** talk freely with the character. Edit any of your messages to try another wording.
+- **Simulation:** talk freely with the AI character. Edit any of your messages to try another wording.
 - **Guided practice:** draft each reply, get short feedback, then send it.
 - **Report:** when you finish, a report covers your words, how you led, and what to try next.
 

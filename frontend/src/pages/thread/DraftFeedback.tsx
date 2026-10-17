@@ -44,7 +44,7 @@ export function DraftFeedback({ revision, disabled, onUse, onSend }: DraftFeedba
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="min-w-0 truncate text-xs text-muted">Your draft: “{content}”</p>
         <Button disabled={disabled} onClick={onSend} className="h-9 px-4 text-sm">
-          Send to character
+          Send to AI character
         </Button>
       </div>
     </div>

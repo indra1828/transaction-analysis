@@ -44,7 +44,7 @@ async function failIfNotOk(response: Response): Promise<void> {
 }
 
 export async function request<T>(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<T> {

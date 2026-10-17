@@ -1,15 +1,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { Alert } from "../components/Alert";
 import { Badge } from "../components/Badge";
 import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Field, TextInput } from "../components/Field";
 import { Spinner } from "../components/Spinner";
-import { getScenario, startThread } from "../api";
+import { buttonClasses } from "../components/buttonStyles";
+import { deleteScenario, getScenario, startThread } from "../api";
 import type { Mode } from "../api";
 import { messageOf, useAsync } from "../hooks/useAsync";
 
@@ -23,7 +25,7 @@ const MODES: { value: Mode; title: string; description: string }[] = [
     value: "guided",
     title: "Guided practice",
     description:
-      "Draft each reply, get feedback, revise it, then send. The character replies only after you accept.",
+      "Draft each reply, get feedback, revise it, then send. The AI character replies only after you accept.",
   },
 ];
 
@@ -36,6 +38,7 @@ export function ScenarioPage() {
   const [maxTurns, setMaxTurns] = useState("");
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (scenario.loading) return <Spinner />;
   if (scenario.error || !scenario.data) {
@@ -68,17 +71,45 @@ export function ScenarioPage() {
       <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-4">
           <BackLink to="/">All scenarios</BackLink>
-          <div>
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <Badge tone={is_public ? "neutral" : "primary"}>{is_public ? "Built-in" : "Yours"}</Badge>
+            {!is_public && (
+              <div className="flex items-center gap-5">
+                <Link to={`/scenarios/${id}/edit`} className={buttonClasses("text", "text-sm")}>
+                  Edit
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="cursor-pointer text-sm font-medium text-muted underline-offset-4 transition-colors hover:text-error hover:underline"
+                >
+                  Delete scenario
+                </button>
+              </div>
+            )}
           </div>
           <h1 className="text-5xl leading-tight">{title}</h1>
         </div>
+
+        {confirmingDelete && (
+          <ConfirmDialog
+            title="Delete this scenario?"
+            text="This permanently removes the scenario, every conversation started from it, and their reports. This cannot be undone."
+            confirmLabel="Yes, delete"
+          pendingLabel="Deleting…"
+            onConfirm={async () => {
+              await deleteScenario(id);
+              navigate("/");
+            }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
+        )}
 
         <Card>
           <dl className="flex flex-col gap-6">
             {config.context && <Detail label="Situation" text={config.context} />}
             {config.user_role && <Detail label="You are" text={config.user_role} />}
-            {config.persona && <Detail label="The character" text={config.persona} />}
+            {config.persona && <Detail label="AI Character" text={config.persona} />}
             {config.opening_line && (
               <div className="flex flex-col gap-2">
                 <dt className="text-xs font-medium uppercase tracking-widest text-muted">Opening line</dt>

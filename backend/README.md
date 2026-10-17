@@ -25,7 +25,7 @@ Create `src/.env` (loaded automatically by `src/main.py`):
 | `GROQ_API_KEY` | yes | LLM provider key |
 | `LLM_MODEL` | no | Groq model ID, defaults to `openai/gpt-oss-120b` |
 | `DATABASE_URL` | no | Defaults to `sqlite:///./conversation.db` (relative to where you start the server) |
-| `MAX_TURNS` | no | Default turn limit per thread, default `10` |
+| `MAX_TURNS` | no | Default turn limit per thread, default `20` |
 | `COOKIE_SECURE` | no | Set `true` behind HTTPS |
 | `FRONTEND_URL` | no | Where to send the browser after Google sign-in. Defaults to `/docs`. Set to `http://localhost:5173` for the React app |
 
@@ -76,7 +76,7 @@ curl -s "$BASE/scenarios" -H "Cookie: $COOKIE"
 
 Scenario IDs are UUIDs, so copy the `id` of the one you want. The three seeded scenarios are *Missed Deadline*, *Defensive Employee*, and *Silent Team*.
 
-To create your own, use `POST /scenarios` with `{"title": "...", "config": {...}}`, or draft one with the LLM via `POST /scenarios/generate` (nothing is saved until you call `POST /scenarios`).
+To create your own, use `POST /scenarios` with `{"title": "...", "config": {...}}`, or draft one with the LLM via `POST /scenarios/draft` (nothing is saved until you call `POST /scenarios`). Change a scenario you created with `PATCH /scenarios/{id}` (send only the fields to change, such as `{"config": {"opening_line": "..."}}`), and delete it with `DELETE /scenarios/{id}`, which also deletes its conversations and reports.
 
 ### 2. Start a simulation thread
 
@@ -118,7 +118,7 @@ data: {"message_id":"<uuid>","thread_status":"active","completion_reason":null}
 
 On failure you get `event: message.error` with a `detail` field. The user message is removed again, so you can retry the same text.
 
-`completion_reason` is `scenario_completed` (the AI reached a stopping condition) or `max_turns` (the user hit the limit). Either one sets `thread_status` to `completed`.
+`completion_reason` is `scenario_completed` (the AI reached a stopping condition) or `max_turns` (the user hit the limit). Only `max_turns` sets `thread_status` to `completed`. After `scenario_completed` the thread stays `active`, and the learner decides whether to finish (`/complete`) or keep talking.
 
 Repeat step 3 for as many exchanges as you like. History is available at `GET /threads/{id}/messages`.
 
@@ -197,7 +197,9 @@ All paths are under `/api/v1`, except `/health`.
 | GET | `/scenarios` | List public and own scenarios |
 | GET | `/scenarios/{id}` | One scenario |
 | POST | `/scenarios` | Save a private scenario |
-| POST | `/scenarios/generate` | Draft a scenario with the LLM (not saved) |
+| POST | `/scenarios/draft` | Draft a scenario with the LLM (not saved) |
+| PATCH | `/scenarios/{id}` | Change your own scenario; built-in ones are refused |
+| DELETE | `/scenarios/{id}` | Delete your own scenario with its conversations and reports |
 | POST | `/threads` | Start a thread (`simulation` or `guided`) |
 | GET | `/threads` | Your threads, newest first |
 | GET | `/threads/{id}` | One thread |
@@ -232,7 +234,7 @@ Errors that happen before streaming starts (not found, wrong mode, thread comple
 
 - **One reply at a time per thread.** A database lock on the thread rejects a second generation with `409`. The lock expires after 120 seconds, so a crashed request cannot block a thread forever.
 - **Failed replies are rolled back.** If the model fails, the stream drops, or the reply is empty, the user message is deleted so the client can retry without duplicates.
-- **Completion.** A simulation thread completes automatically when the AI signals a stopping condition or the user reaches `max_turns`. The AI's stop signal is ignored until the learner has sent 3 messages, so a scene cannot end on the first exchange. You can also call `/complete` at any time.
+- **Completion.** A simulation thread completes automatically only when the user reaches `max_turns`. When the AI signals a stopping condition, the reply reports `scenario_completed` and the thread stays open, so the learner can keep talking. The AI's stop signal is ignored until the learner has sent 8 messages, so a scene cannot end early. You can call `/complete` at any time.
 - **Reports are stored once.** `complete` on a thread that already has a report returns it unchanged.
 
 ## Differences from the spec

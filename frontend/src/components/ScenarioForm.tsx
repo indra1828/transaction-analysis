@@ -25,7 +25,7 @@ export function ScenarioForm({ value, onChange }: ScenarioFormProps) {
           )}
         </Field>
 
-        <Field label="The character" hint="The role the AI plays, for example: Analyst who missed the deadline">
+        <Field label="AI Character" hint="The role the AI plays, for example: Analyst who missed the deadline">
           {(id) => (
             <TextInput id={id} maxLength={120} value={value.theirRole} onChange={(e) => set({ theirRole: e.target.value })} />
           )}
