@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from db.db import AuthSession, utc_now
 
-SESSION_LIFETIME = timedelta(minutes=10)  # the cookie max_age in main.py is derived from this
+SESSION_LIFETIME = timedelta(minutes=30)  # the cookie max_age in main.py is derived from this
 
 
 def _aware(value: datetime) -> datetime:

@@ -53,7 +53,7 @@ Every endpoint except `/health` requires a session. Log in through Google:
 2. After the callback you are redirected to `/docs`, and the browser holds a `ta_coach_session` cookie.
 3. Check who you are with `GET /api/v1/auth/me`. Log out with `POST /api/v1/auth/logout`.
 
-Sessions are stored on the server (`auth_sessions` table) and last 10 minutes (`SESSION_LIFETIME` in `src/oauth/sessions.py`). The browser cookie holds only a random id. Logout deletes the session, so a copied cookie stops working straight away.
+Sessions are stored on the server (`auth_sessions` table) and last 30 minutes (`SESSION_LIFETIME` in `src/oauth/sessions.py`). The browser cookie holds only a random id. Logout deletes the session, so a copied cookie stops working straight away.
 
 For curl, copy the `ta_coach_session` cookie value from the browser's dev tools and pass it on each request:
 

@@ -159,10 +159,22 @@ function ReportView({
     color: EGO_COLOR[state],
   }));
 
+  // The PDF library loads only when the learner asks for the file.
+  const download = async () => {
+    const { downloadFile, reportFileName, reportToPdf } = await import("../lib/reportFile");
+
+    downloadFile(reportFileName(scenarioTitle, date), reportToPdf({ scenarioTitle, date, report, quoteOf: text }));
+  };
+
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-14">
       <header className="flex flex-col gap-4">
-        <BackLink to={`/threads/${id}`}>Back to conversation</BackLink>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <BackLink to={`/threads/${id}`}>Back to conversation</BackLink>
+          <Button variant="secondary" className="h-9 px-4 text-sm" onClick={() => void download()}>
+            Download report
+          </Button>
+        </div>
         <p className="text-xs font-medium uppercase tracking-widest text-muted">
           Report · {formatDate(date)}
         </p>
