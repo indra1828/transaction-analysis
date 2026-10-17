@@ -25,7 +25,7 @@ Create `src/.env` (loaded automatically by `src/main.py`):
 | `GROQ_API_KEY` | yes | LLM provider key |
 | `LLM_MODEL` | no | Groq model ID, defaults to `openai/gpt-oss-120b` |
 | `DATABASE_URL` | no | Defaults to `sqlite:///./conversation.db` (relative to where you start the server) |
-| `MAX_TURNS` | no | Default turn limit per thread, default `20` |
+| `MAX_TURNS` | no | Default turn limit per thread, default `10` |
 | `COOKIE_SECURE` | no | Set `true` behind HTTPS |
 | `FRONTEND_URL` | no | Where to send the browser after Google sign-in. Defaults to `/docs`. Set to `http://localhost:5173` for the React app |
 

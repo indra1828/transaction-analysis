@@ -22,7 +22,7 @@ LOCK_TIMEOUT = timedelta(seconds=120)
 
 
 def default_max_turns() -> int:
-    return int(os.getenv("MAX_TURNS", "20"))
+    return int(os.getenv("MAX_TURNS", "10"))
 
 
 def get_thread(db, thread_id: str, user_id: str) -> Thread:
