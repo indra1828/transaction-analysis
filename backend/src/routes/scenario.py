@@ -14,7 +14,8 @@ from models.scenario import (
     ScenarioResponse,
     ScenarioUpdate,
 )
-from oauth.dependencies import CurrentTeacher, CurrentUser
+from oauth.dependencies import CurrentUser
+from oauth.roles import can_teach
 from services.threads import delete_thread_tree, is_generating
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,11 @@ def is_visible(scenario: Scenario, user_id: str) -> bool:
 
 def is_creator(scenario: Scenario, user_id: str) -> bool:
     return not scenario.is_public and scenario.created_by == user_id
+
+
+def can_share(user: User) -> bool:
+    """Only teachers can share a scenario with every user. Students' scenarios stay private."""
+    return can_teach(user.role)
 
 
 def scenario_response(scenario: Scenario, user: User) -> ScenarioResponse:
@@ -130,23 +136,23 @@ def get_scenario(id: str, user: CurrentUser, db: DbSession):
 def create_scenario(
     data: ScenarioCreateRequest,
     db: DbSession,
-    teacher: CurrentTeacher,
+    user: CurrentUser,
 ):
-    """Create a scenario. Only teachers can, and it is shared with every user unless is_shared is false."""
+    """Create a scenario. Teachers choose whether it is shared with every user; students' scenarios are private."""
     ensure_unique_title(db, data.title)
     scenario = Scenario(
         title=data.title,
         config=data.config,
-        created_by=teacher.id,
+        created_by=user.id,
         is_public=False,
-        is_shared=data.is_shared,
+        is_shared=data.is_shared if can_share(user) else False,
     )
 
     db.add(scenario)
     db.commit()
     db.refresh(scenario)
 
-    return scenario_response(scenario, teacher)
+    return scenario_response(scenario, user)
 
 
 @router.patch("/{id}", response_model=ScenarioResponse)
@@ -160,6 +166,9 @@ def update_scenario(
 
     A conversation that has already started keeps the scenario it began with.
     """
+    if data.is_shared and not can_share(user):
+        raise HTTPException(403, "Students can only keep their scenarios private")
+
     scenario = get_owned_scenario(db, id, user.id)
     changes = data.config.model_dump(exclude_none=True) if data.config else {}
     texts = [data.title or "", *_strings(changes.values())]
@@ -206,7 +215,7 @@ def delete_scenario(id: str, user: CurrentUser, db: DbSession):
 
 
 @router.post("/draft", response_model=ScenarioDraft)
-async def create_draft(data: ScenarioDraftRequest, teacher: CurrentTeacher):
+async def create_draft(data: ScenarioDraftRequest, user: CurrentUser):
     """Draft the rest of a scenario from the teacher's answers.
 
     Nothing is saved. Review the draft, send feedback to revise it (pass the

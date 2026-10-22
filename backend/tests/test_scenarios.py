@@ -28,10 +28,46 @@ def test_private_teacher_scenario_is_visible_only_to_its_creator(make_teacher, l
     assert learner.get(f"{API}/{created['id']}").status_code == 404
 
 
-def test_students_cannot_create_scenarios(login):
+def test_student_scenario_is_private_even_when_shared_is_requested(login):
+    student, learner = login("a@example.com"), login("b@example.com")
+    created = student.post(API, json={**BODY, "is_shared": True})
+
+    assert created.status_code == 201
+    body = created.json()
+    assert body["is_shared"] is False
+    assert body["editable"] is True
+    assert [s["id"] for s in student.get(API).json()] == [body["id"]]
+    assert learner.get(API).json() == []
+    assert learner.get(f"{API}/{body['id']}").status_code == 404
+
+
+def test_student_cannot_share_a_scenario(login):
+    student = login("a@example.com")
+    created = student.post(API, json=BODY).json()
+
+    assert student.patch(f"{API}/{created['id']}", json={"is_shared": True}).status_code == 403
+    assert student.get(f"{API}/{created['id']}").json()["is_shared"] is False
+
+
+def test_student_can_draft_a_scenario_without_saving_it(login, monkeypatch):
     student = login("a@example.com")
 
-    assert student.post(API, json=BODY).status_code == 403
+    async def fake_draft(data):
+        return {"title": data.title, "config": {"persona": "Boss", "user_role": "Me", "context": "x", "objectives": ["o"], "stopping_conditions": ["s"]}}
+
+    monkeypatch.setattr("routes.scenario.draft_scenario", fake_draft)
+    response = student.post(
+        f"{API}/draft",
+        json={
+            "title": "Raise talk",
+            "situation": "I want a raise after a good year.",
+            "user_role": "Employee",
+            "ai_role": "Manager",
+            "goals": ["Ask for a raise"],
+        },
+    )
+
+    assert response.status_code == 200
     assert student.get(API).json() == []
 
 

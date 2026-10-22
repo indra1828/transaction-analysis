@@ -52,7 +52,7 @@ def test_superadmin_can_demote_a_teacher(make_teacher, login):
 
     root.patch(f"{API}/admin/users/{teacher_id}/role", json={"role": "student"})
 
-    assert login("t@example.com").post(f"{API}/scenarios", json=SCENARIO).status_code == 403
+    assert login("t@example.com").post(f"{API}/scenarios", json=SCENARIO).json()["is_shared"] is False
 
 
 def test_superadmin_role_cannot_be_changed_through_the_api(login):
@@ -112,5 +112,7 @@ def test_demoted_teacher_loses_teacher_only_features(make_teacher, login):
 
     root.patch(f"{API}/admin/users/{teacher_id}/role", json={"role": "student"})
 
-    assert teacher.post(f"{API}/scenarios", json=SCENARIO).status_code == 403
+    created = teacher.post(f"{API}/scenarios", json={**SCENARIO, "is_shared": True}).json()
+
+    assert created["is_shared"] is False
     assert teacher.get(f"{API}/teacher/scenarios").status_code == 403
