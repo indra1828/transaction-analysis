@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 
-import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";
 import { Button } from "../components/Button";
 import { ConversationRow } from "../components/ConversationRow";
@@ -11,13 +10,10 @@ import { Spinner } from "../components/Spinner";
 import { listScenarios, listThreads } from "../api";
 import type { Scenario } from "../api";
 import { usePagedList } from "../hooks/usePagedList";
-import { canTeach } from "../lib/roles";
 
 export function DashboardPage() {
-  const { user } = useAuth();
   const scenarios = usePagedList((offset, limit) => listScenarios({ offset, limit }), "scenarios");
   const threads = usePagedList((offset, limit) => listThreads({ offset, limit }), "threads");
-  const teacher = user !== null && canTeach(user);
 
   return (
     <div className="flex flex-col gap-16">
@@ -25,11 +21,9 @@ export function DashboardPage() {
         title="Scenarios"
         description="Choose a scenario to rehearse with an AI character. Your conversations and reports are kept here."
         actions={
-          teacher && (
-            <Link to="/scenarios/new" className={buttonClasses("secondary")}>
-              New Scenario
-            </Link>
-          )
+          <Link to="/scenarios/new" className={buttonClasses("secondary")}>
+            New Scenario
+          </Link>
         }
       />
 

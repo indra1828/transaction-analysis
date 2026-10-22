@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router";
 
+import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";
 import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
@@ -13,6 +14,7 @@ import { ScenarioForm } from "../components/ScenarioForm";
 import { VisibilityChoice } from "../components/VisibilityChoice";
 import { createScenario, draftScenario } from "../api";
 import { messageOf } from "../hooks/useAsync";
+import { canTeach } from "../lib/roles";
 import {
   EMPTY_ANSWERS,
   draftToText,
@@ -28,12 +30,14 @@ import type { DraftText, ScenarioAnswers } from "../lib/scenario";
 // the options to update or save it.
 export function NewScenarioPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const teacher = user !== null && canTeach(user);
   const [answers, setAnswers] = useState<ScenarioAnswers>(EMPTY_ANSWERS);
   const [draft, setDraft] = useState<DraftText | null>(null);
   const [feedback, setFeedback] = useState("");
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [shared, setShared] = useState(true);
+  const [shared, setShared] = useState(teacher);
   const [error, setError] = useState<string | null>(null);
 
   // Writes the scenario from the answers. With `revise`, it applies the feedback to the current draft.
@@ -96,7 +100,7 @@ export function NewScenarioPage() {
 
       <PageHeader
         title="New Scenario"
-        description="Set up a workplace conversation to practise. Answer five questions and the assistant writes the AI character and when the conversation ends. Review everything, then choose whether every user can see it."
+        description="Set up a workplace conversation to practise. Answer five questions and the assistant writes the AI character and when the conversation ends. Review everything, then save it."
       />
 
       {draft ? (
@@ -126,7 +130,11 @@ export function NewScenarioPage() {
             </div>
           </div>
 
-          <VisibilityChoice shared={shared} onChange={setShared} />
+          {teacher ? (
+            <VisibilityChoice shared={shared} onChange={setShared} />
+          ) : (
+            <p className="text-sm leading-relaxed text-muted">Only you can see this scenario.</p>
+          )}
 
           <div className="flex flex-wrap items-center gap-6">
             <Button disabled={saving || working} onClick={() => void save()} className="h-12 px-6 text-base">

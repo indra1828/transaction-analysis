@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
+import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";
 import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
@@ -12,6 +13,7 @@ import { Spinner } from "../components/Spinner";
 import { getScenario, updateScenario } from "../api";
 import type { Scenario } from "../api";
 import { messageOf, useAsync } from "../hooks/useAsync";
+import { canTeach } from "../lib/roles";
 import { scenarioToText, textToUpdate, validateDraft } from "../lib/scenario";
 import type { DraftText } from "../lib/scenario";
 
@@ -36,7 +38,7 @@ export function EditScenarioPage() {
     return (
       <div className="flex flex-col gap-6">
         <BackLink to={`/scenarios/${id}`}>Back to scenario</BackLink>
-        <Alert>Only the teacher who created this scenario can change it.</Alert>
+        <Alert>Only the person who created this scenario can change it.</Alert>
       </div>
     );
   }
@@ -46,6 +48,8 @@ export function EditScenarioPage() {
 
 function ScenarioEditor({ scenario }: { scenario: Scenario }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const teacher = user !== null && canTeach(user);
   const [text, setText] = useState<DraftText>(() => scenarioToText(scenario));
   const [shared, setShared] = useState(scenario.is_shared);
   const [saving, setSaving] = useState(false);
@@ -63,7 +67,8 @@ function ScenarioEditor({ scenario }: { scenario: Scenario }) {
     setError(null);
 
     try {
-      await updateScenario(scenario.id, { ...textToUpdate(text), is_shared: shared });
+      // Only teachers can change sharing. A former teacher's shared scenario keeps its sharing.
+      await updateScenario(scenario.id, { ...textToUpdate(text), ...(teacher ? { is_shared: shared } : {}) });
       navigate(`/scenarios/${scenario.id}`);
     } catch (err) {
       setError(messageOf(err));
@@ -86,7 +91,11 @@ function ScenarioEditor({ scenario }: { scenario: Scenario }) {
       >
         <ScenarioFields value={text} onChange={setText} />
 
-        <VisibilityChoice shared={shared} onChange={setShared} />
+        {teacher ? (
+          <VisibilityChoice shared={shared} onChange={setShared} />
+        ) : (
+          <p className="text-sm leading-relaxed text-muted">Only you can see this scenario.</p>
+        )}
 
         {error && <Alert>{error}</Alert>}
 

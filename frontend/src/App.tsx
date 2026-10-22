@@ -32,10 +32,10 @@ export default function App() {
                 <Route path="scenarios/:id" element={<ScenarioPage />} />
                 <Route path="threads/:id" element={<ThreadPage />} />
                 <Route path="threads/:id/report" element={<ReportPage />} />
+                <Route path="scenarios/new" element={<NewScenarioPage />} />
+                <Route path="scenarios/:id/edit" element={<EditScenarioPage />} />
 
                 <Route element={<RequireRole allow={canTeach} />}>
-                  <Route path="scenarios/new" element={<NewScenarioPage />} />
-                  <Route path="scenarios/:id/edit" element={<EditScenarioPage />} />
                   <Route path="teacher" element={<TeacherDashboardPage />} />
                   <Route path="teacher/scenarios/:id" element={<ScenarioSubmissionsPage />} />
                   <Route path="teacher/conversations/:id" element={<ConversationReviewPage />} />

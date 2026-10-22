@@ -10,6 +10,10 @@ vi.mock("../api", () => ({
   createScenario: vi.fn(),
 }));
 
+vi.mock("../auth/useAuth", () => ({
+  useAuth: () => ({ user: { id: "u1", email: "t@example.com", role: "teacher" } }),
+}));
+
 const mockedDraft = vi.mocked(draftScenario);
 
 const draft = {

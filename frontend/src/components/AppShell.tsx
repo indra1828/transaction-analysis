@@ -30,15 +30,13 @@ export function AppShell() {
               <NavLink to="/" end className={navClass}>
                 Scenarios
               </NavLink>
+              <NavLink to="/scenarios/new" className={navClass}>
+                New Scenario
+              </NavLink>
               {user && canTeach(user) && (
-                <>
-                  <NavLink to="/scenarios/new" className={navClass}>
-                    New Scenario
-                  </NavLink>
-                  <NavLink to="/teacher" className={navClass}>
-                    Dashboard
-                  </NavLink>
-                </>
+                <NavLink to="/teacher" className={navClass}>
+                  Dashboard
+                </NavLink>
               )}
             </nav>
           </div>
