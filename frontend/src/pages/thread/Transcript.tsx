@@ -35,7 +35,7 @@ export function Transcript({ messages, pending, canEdit, onEdit }: TranscriptPro
   return (
     <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-6 sm:px-8">
       {messages.length === 0 && !pending && (
-        <p className="m-auto text-sm text-muted">The conversation is starting…</p>
+        <p className="m-auto text-sm text-muted">Send a message to begin the conversation.</p>
       )}
 
       {messages.map((message) =>

@@ -35,12 +35,6 @@ export function ScenarioFields({ value, onChange }: ScenarioFieldsProps) {
         )}
       </Field>
 
-      <Field label="Opening line" hint="The AI character's first words in the conversation.">
-        {(id) => (
-          <TextInput id={id} maxLength={1000} value={value.openingLine} onChange={(e) => set({ openingLine: e.target.value })} />
-        )}
-      </Field>
-
       <Field label="Goals" hint="One point per line.">
         {(id) => (
           <TextArea id={id} rows={3} value={value.objectives} onChange={(e) => set({ objectives: e.target.value })} />

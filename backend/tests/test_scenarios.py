@@ -2,29 +2,49 @@ API = "/api/v1/scenarios"
 BODY = {"title": "My practice", "config": {"persona": "Boss"}}
 
 
-def test_created_scenario_is_private_to_creator(login):
-    owner, other = login("a@example.com"), login("b@example.com")
-    created = owner.post(API, json=BODY)
+def test_teacher_scenario_is_shared_with_every_user(make_teacher, login):
+    teacher, learner = make_teacher("t@example.com"), login("b@example.com")
+    created = teacher.post(API, json=BODY)
 
     assert created.status_code == 201
-    assert created.json()["is_public"] is False
-    scenario_id = created.json()["id"]
+    body = created.json()
+    assert body["is_shared"] is True
+    assert body["is_public"] is False
+    assert body["editable"] is True
 
-    assert [s["id"] for s in owner.get(API).json()] == [scenario_id]
-    assert owner.get(f"{API}/{scenario_id}").status_code == 200
-    assert other.get(API).json() == []
-    assert other.get(f"{API}/{scenario_id}").status_code == 404
+    assert [s["id"] for s in learner.get(API).json()] == [body["id"]]
+    shared = learner.get(f"{API}/{body['id']}").json()
+    assert shared["editable"] is False
 
 
-def test_client_cannot_make_scenario_public(login):
-    owner, other = login("a@example.com"), login("b@example.com")
-    created = owner.post(
+def test_private_teacher_scenario_is_visible_only_to_its_creator(make_teacher, login):
+    teacher, learner = make_teacher("t@example.com"), login("b@example.com")
+    created = teacher.post(API, json={**BODY, "is_shared": False}).json()
+
+    assert created["is_shared"] is False
+    assert created["editable"] is True
+    assert [s["id"] for s in teacher.get(API).json()] == [created["id"]]
+    assert learner.get(API).json() == []
+    assert learner.get(f"{API}/{created['id']}").status_code == 404
+
+
+def test_students_cannot_create_scenarios(login):
+    student = login("a@example.com")
+
+    assert student.post(API, json=BODY).status_code == 403
+    assert student.get(API).json() == []
+
+
+def test_client_cannot_make_scenario_public(make_teacher, login):
+    teacher, other = make_teacher("t@example.com"), login("b@example.com")
+    created = teacher.post(
         API,
         json={**BODY, "is_public": True, "created_by": "someone-else"},
     ).json()
 
     assert created["is_public"] is False
-    assert other.get(f"{API}/{created['id']}").status_code == 404
+    assert created["is_shared"] is True
+    assert other.get(f"{API}/{created['id']}").status_code == 200
 
 
 def test_public_scenario_is_visible_to_everyone(login, make_public_scenario):

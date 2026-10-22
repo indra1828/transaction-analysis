@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 
 import { Alert } from "../components/Alert";
 import { Badge } from "../components/Badge";
@@ -10,10 +10,18 @@ import { buttonClasses } from "../components/buttonStyles";
 import { SegmentBar } from "../components/SegmentBar";
 import type { Segment } from "../components/SegmentBar";
 import { Spinner } from "../components/Spinner";
+import { ViewToggle } from "../components/ViewToggle";
+import type { ViewChoice } from "../components/ViewToggle";
 import { ApiError, completeThread, getEvaluation, getScenario, getThread, listMessages } from "../api";
 import type { Evaluation, EvaluationReport, Message, ObjectiveResult, Thread } from "../api";
 import { messageOf, useAsync } from "../hooks/useAsync";
 import { OBJECTIVE_LABEL, OBJECTIVE_TONE, TRANSACTION_LABEL, formatDate } from "../lib/format";
+import { Transcript } from "./thread/Transcript";
+
+const noop = async () => {};
+
+// Three equal-width columns with the toggle in the middle, so it stays centred whatever the side labels are.
+const HEADER_GRID = "grid grid-cols-[1fr_auto_1fr] items-center gap-4";
 
 interface ReportData {
   thread: Thread;
@@ -51,6 +59,7 @@ async function loadReport(id: string): Promise<ReportData> {
 export function ReportPage() {
   const { id = "" } = useParams();
   const report = useAsync(() => loadReport(id), id);
+  const [params, setParams] = useSearchParams();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,13 +86,41 @@ export function ReportPage() {
   }
 
   const { thread, scenarioTitle, messages, evaluation } = report.data;
+  // Report and conversation are only offered once the conversation is completed.
+  const completed = thread.status === "completed";
+  const view: ViewChoice = completed && params.get("view") === "conversation" ? "conversation" : "report";
+  const toggle = completed ? (
+    <ViewToggle value={view} onChange={(next) => setParams({ view: next }, { replace: true })} />
+  ) : null;
 
-  if (!evaluation) {
-    const completed = thread.status === "completed";
-
+  if (view === "conversation") {
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-8">
-        <BackLink to={`/threads/${id}`}>Back to conversation</BackLink>
+        <div className={HEADER_GRID}>
+          <div className="justify-self-start">
+            <BackLink to="/">Back to scenarios</BackLink>
+          </div>
+          <div className="justify-self-center">{toggle}</div>
+          <div />
+        </div>
+        <h1 className="text-4xl">{scenarioTitle}</h1>
+        <div className="flex flex-col rounded-lg border border-hairline bg-canvas">
+          <Transcript messages={messages} pending={null} canEdit={false} onEdit={noop} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!evaluation) {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-8">
+        <div className={HEADER_GRID}>
+          <div className="justify-self-start">
+            <BackLink to={`/threads/${id}`}>Back to conversation</BackLink>
+          </div>
+          <div className="justify-self-center">{toggle}</div>
+          <div />
+        </div>
         <h1 className="text-4xl">{scenarioTitle}</h1>
         <div className="flex flex-col gap-4 rounded-lg bg-card p-8">
           <h2 className="text-2xl">No report yet</h2>
@@ -111,7 +148,9 @@ export function ReportPage() {
 
   return (
     <ReportView
-      id={id}
+      backTo={`/threads/${id}`}
+      backLabel="Back to conversation"
+      toggle={toggle}
       scenarioTitle={scenarioTitle}
       date={thread.created_at}
       messages={messages}
@@ -132,14 +171,18 @@ const EGO_COLOR = {
   child: "bg-amber",
 } as const;
 
-function ReportView({
-  id,
+export function ReportView({
+  backTo,
+  backLabel,
+  toggle,
   scenarioTitle,
   date,
   messages,
   report,
 }: {
-  id: string;
+  backTo?: string;
+  backLabel?: string;
+  toggle?: ReactNode;
   scenarioTitle: string;
   date: string;
   messages: Message[];
@@ -180,11 +223,16 @@ function ReportView({
   return (
     <article className="mx-auto flex max-w-3xl flex-col gap-14">
       <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <BackLink to={`/threads/${id}`}>Back to conversation</BackLink>
-          <Button variant="secondary" className="h-9 px-4 text-sm" onClick={() => void download()}>
-            Download report
-          </Button>
+        <div className={HEADER_GRID}>
+          <div className="justify-self-start">
+            {backTo && backLabel ? <BackLink to={backTo}>{backLabel}</BackLink> : null}
+          </div>
+          <div className="justify-self-center">{toggle}</div>
+          <div className="justify-self-end">
+            <Button variant="secondary" className="h-9 px-4 text-sm" onClick={() => void download()}>
+              Download report
+            </Button>
+          </div>
         </div>
         {downloadError && <Alert>{downloadError}</Alert>}
         <p className="text-xs font-medium uppercase tracking-widest text-muted">

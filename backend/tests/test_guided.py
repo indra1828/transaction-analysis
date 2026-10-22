@@ -4,8 +4,8 @@ from db.session import SessionLocal
 API = "/api/v1"
 
 
-def guided(login, api):
-    owner = login("a@example.com")
+def guided(make_teacher, login, api):
+    owner = make_teacher("a@example.com")
     scenario_id = owner.post(
         f"{API}/scenarios", json={"title": "S", "config": {}}
     ).json()["id"]
@@ -17,14 +17,14 @@ def turns(owner, thread_id):
     return f"{API}/threads/{thread_id}/turns"
 
 
-def test_guided_thread_rejects_plain_messages(login, api):
-    owner, thread_id = guided(login, api)
+def test_guided_thread_rejects_plain_messages(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
 
     assert api.send(owner, thread_id).status_code == 409
 
 
-def test_turn_apis_reject_simulation_threads(login, api):
-    owner = login("a@example.com")
+def test_turn_apis_reject_simulation_threads(make_teacher, login, api):
+    owner = make_teacher("a@example.com")
     scenario_id = owner.post(
         f"{API}/scenarios", json={"title": "S", "config": {}}
     ).json()["id"]
@@ -35,8 +35,8 @@ def test_turn_apis_reject_simulation_threads(login, api):
     assert response.status_code == 409
 
 
-def test_draft_gets_feedback_and_a_suggestion(login, api):
-    owner, thread_id = guided(login, api)
+def test_draft_gets_feedback_and_a_suggestion(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
 
     response = owner.post(turns(owner, thread_id), json={"content": "Hi"})
 
@@ -46,11 +46,11 @@ def test_draft_gets_feedback_and_a_suggestion(login, api):
     assert turn["revisions"][0]["content"] == "Hi"
     assert turn["revisions"][0]["feedback"]["suggested_response"]
     # Nothing is sent to the roleplay yet.
-    assert len(api.messages(owner, thread_id)) == 1
+    assert len(api.messages(owner, thread_id)) == 0
 
 
-def test_only_one_open_turn_at_a_time(login, api):
-    owner, thread_id = guided(login, api)
+def test_only_one_open_turn_at_a_time(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     owner.post(turns(owner, thread_id), json={"content": "Hi"})
 
     response = owner.post(turns(owner, thread_id), json={"content": "Again"})
@@ -58,8 +58,8 @@ def test_only_one_open_turn_at_a_time(login, api):
     assert response.status_code == 409
 
 
-def test_revisions_are_kept(login, api):
-    owner, thread_id = guided(login, api)
+def test_revisions_are_kept(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
 
     revised = owner.post(
@@ -72,13 +72,13 @@ def test_revisions_are_kept(login, api):
         "Hi",
         "Hello, can we talk?",
     ]
-    assert len(api.messages(owner, thread_id)) == 1
+    assert len(api.messages(owner, thread_id)) == 0
 
 
-def test_using_the_suggestion_makes_it_the_final_wording_without_review(
+def test_using_the_suggestion_makes_it_the_final_wording_without_review(make_teacher, 
     login, api, fake_llm
 ):
-    owner, thread_id = guided(login, api)
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     suggested = turn["revisions"][0]["feedback"]["suggested_response"]
     fake_llm.structured_calls = 0
@@ -94,11 +94,11 @@ def test_using_the_suggestion_makes_it_the_final_wording_without_review(
 
     accepted = owner.post(f"{turns(owner, thread_id)}/{turn['id']}/accept")
     assert "message.completed" in accepted.text
-    assert api.messages(owner, thread_id)[1]["content"] == suggested
+    assert api.messages(owner, thread_id)[0]["content"] == suggested
 
 
-def test_accept_sends_latest_wording_and_triggers_the_reply(login, api):
-    owner, thread_id = guided(login, api)
+def test_accept_sends_latest_wording_and_triggers_the_reply(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     owner.post(
         f"{turns(owner, thread_id)}/{turn['id']}/revise",
@@ -110,21 +110,17 @@ def test_accept_sends_latest_wording_and_triggers_the_reply(login, api):
     assert response.status_code == 200
     assert "message.completed" in response.text
     messages = api.messages(owner, thread_id)
-    assert [m["role"] for m in messages] == [
-        "assistant",
-        "user",
-        "assistant",
-    ]
-    assert messages[1]["content"] == "Hello, can we talk?"
-    assert messages[1]["feedback"]["suggested_response"]
+    assert [m["role"] for m in messages] == ["user", "assistant"]
+    assert messages[0]["content"] == "Hello, can we talk?"
+    assert messages[0]["feedback"]["suggested_response"]
     stored = owner.get(turns(owner, thread_id)).json()[0]
     assert stored["status"] == "accepted"
-    assert stored["accepted_message_id"] == messages[1]["id"]
+    assert stored["accepted_message_id"] == messages[0]["id"]
     assert len(stored["revisions"]) == 2
 
 
-def test_accepted_turn_cannot_be_accepted_or_revised_again(login, api):
-    owner, thread_id = guided(login, api)
+def test_accepted_turn_cannot_be_accepted_or_revised_again(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     base = f"{turns(owner, thread_id)}/{turn['id']}"
     owner.post(f"{base}/accept")
@@ -133,11 +129,11 @@ def test_accepted_turn_cannot_be_accepted_or_revised_again(login, api):
     assert (
         owner.post(f"{base}/revise", json={"content": "x"}).status_code == 409
     )
-    assert len(api.messages(owner, thread_id)) == 3  # no duplicate message
+    assert len(api.messages(owner, thread_id)) == 2  # no duplicate message
 
 
-def test_next_turn_starts_after_acceptance(login, api):
-    owner, thread_id = guided(login, api)
+def test_next_turn_starts_after_acceptance(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     first = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     owner.post(f"{turns(owner, thread_id)}/{first['id']}/accept")
 
@@ -147,15 +143,15 @@ def test_next_turn_starts_after_acceptance(login, api):
     assert second.json()["number"] == 2
 
 
-def test_failed_reply_reopens_the_turn(login, api, fake_llm):
-    owner, thread_id = guided(login, api)
+def test_failed_reply_reopens_the_turn(make_teacher, login, api, fake_llm):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     fake_llm.fail_after = 0
 
     failed = owner.post(f"{turns(owner, thread_id)}/{turn['id']}/accept")
 
     assert "message.error" in failed.text
-    assert len(api.messages(owner, thread_id)) == 1
+    assert len(api.messages(owner, thread_id)) == 0
     assert owner.get(turns(owner, thread_id)).json()[0]["status"] == "draft"
 
     fake_llm.fail_after = None
@@ -163,8 +159,8 @@ def test_failed_reply_reopens_the_turn(login, api, fake_llm):
     assert "message.completed" in retry.text
 
 
-def test_unknown_turn_and_other_users(login, api):
-    owner, thread_id = guided(login, api)
+def test_unknown_turn_and_other_users(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     other = login("b@example.com")
 
@@ -184,10 +180,10 @@ def test_unknown_turn_and_other_users(login, api):
     )
 
 
-def test_feedback_failure_returns_502_and_creates_no_turn(
+def test_feedback_failure_returns_502_and_creates_no_turn(make_teacher, 
     login, api, fake_llm
 ):
-    owner, thread_id = guided(login, api)
+    owner, thread_id = guided(make_teacher, login, api)
     fake_llm.fail_structured = True
 
     response = owner.post(turns(owner, thread_id), json={"content": "Hi"})
@@ -196,8 +192,8 @@ def test_feedback_failure_returns_502_and_creates_no_turn(
     assert owner.get(turns(owner, thread_id)).json() == []
 
 
-def test_simulation_mode_never_uses_the_coach(login, api, fake_llm):
-    owner = login("a@example.com")
+def test_simulation_mode_never_uses_the_coach(make_teacher, login, api, fake_llm):
+    owner = make_teacher("a@example.com")
     scenario_id = owner.post(
         f"{API}/scenarios", json={"title": "S", "config": {}}
     ).json()["id"]
@@ -209,8 +205,8 @@ def test_simulation_mode_never_uses_the_coach(login, api, fake_llm):
     assert fake_llm.structured_calls == 0
 
 
-def test_guided_thread_can_be_evaluated(login, api):
-    owner, thread_id = guided(login, api)
+def test_guided_thread_can_be_evaluated(make_teacher, login, api):
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "hi"}).json()
     owner.post(f"{turns(owner, thread_id)}/{turn['id']}/accept")
     owner.post(turns(owner, thread_id), json={"content": "unsent draft"})
@@ -222,8 +218,8 @@ def test_guided_thread_can_be_evaluated(login, api):
         assert db.get(Thread, thread_id).status == "completed"
 
 
-def test_guided_turn_limit_completes_the_thread(login, api):
-    owner = login("a@example.com")
+def test_guided_turn_limit_completes_the_thread(make_teacher, login, api):
+    owner = make_teacher("a@example.com")
     scenario_id = owner.post(
         f"{API}/scenarios", json={"title": "S", "config": {}}
     ).json()["id"]
@@ -243,14 +239,14 @@ def test_guided_turn_limit_completes_the_thread(login, api):
     )
 
 
-def test_parallel_accept_cannot_double_send(login, api):
+def test_parallel_accept_cannot_double_send(make_teacher, login, api):
     """Two accepts passing the early check: only the first may win."""
     import main
     from db.session import DbSession
     from routes.turn import get_open_turn, get_turn
     from services.threads import GuidedThread
 
-    owner, thread_id = guided(login, api)
+    owner, thread_id = guided(make_teacher, login, api)
     turn = owner.post(turns(owner, thread_id), json={"content": "Hi"}).json()
     url = f"{turns(owner, thread_id)}/{turn['id']}/accept"
     owner.post(url)
@@ -265,7 +261,7 @@ def test_parallel_accept_cannot_double_send(login, api):
         main.app.dependency_overrides.pop(get_open_turn)
 
     assert "message.error" in second.text
-    assert len(api.messages(owner, thread_id)) == 3
+    assert len(api.messages(owner, thread_id)) == 2
     assert owner.get(turns(owner, thread_id)).json()[0]["status"] == (
         "accepted"
     )

@@ -1,5 +1,7 @@
 import { Link, NavLink, Outlet, useMatch } from "react-router";
 
+import { useAuth } from "../auth/useAuth";
+import { canTeach } from "../lib/roles";
 import { ProfileMenu } from "./ProfileMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -12,6 +14,7 @@ const YEAR = new Date().getFullYear();
 // A conversation fills the window: its chat scrolls inside its own panel, so
 // the page never scrolls and the footer is left out.
 export function AppShell() {
+  const { user } = useAuth();
   const inConversation = useMatch({ path: "/threads/:id", end: true }) !== null;
 
 
@@ -27,9 +30,16 @@ export function AppShell() {
               <NavLink to="/" end className={navClass}>
                 Scenarios
               </NavLink>
-              <NavLink to="/scenarios/new" className={navClass}>
-                New Scenario
-              </NavLink>
+              {user && canTeach(user) && (
+                <>
+                  <NavLink to="/scenarios/new" className={navClass}>
+                    New Scenario
+                  </NavLink>
+                  <NavLink to="/teacher" className={navClass}>
+                    Dashboard
+                  </NavLink>
+                </>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-3">

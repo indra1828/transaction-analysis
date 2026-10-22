@@ -50,7 +50,7 @@ async function openBuiltInScenario(title: string) {
 }
 
 // Starts a conversation from the scenario page and waits for the thread page.
-// The scenario page also shows the opening line, so wait for the reply box.
+// The scenario page is ready once the reply box shows.
 async function startConversation() {
   fireEvent.click(screen.getByRole("button", { name: "Start conversation" }));
   return screen.findByLabelText(/Your reply|Draft reply/, {}, SLOW);
@@ -186,7 +186,7 @@ suite("live end-to-end", () => {
       target: { value: "Agree a recovery date" },
     });
 
-    // The assistant drafts the opening line and the ending; review, then save.
+    // The assistant drafts the character and the ending; review, then save.
     fireEvent.click(screen.getByRole("button", { name: "Create scenario" }));
     expect(await screen.findByRole("heading", { name: "Review the scenario" }, SLOW)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Save scenario" }));

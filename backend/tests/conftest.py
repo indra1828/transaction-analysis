@@ -12,14 +12,16 @@ os.environ.update(
     SESSION_SECRET="test-session-secret-0123456789abcdef",
     COOKIE_SECURE="false",
     GROQ_API_KEY="test-key",
+    SUPERADMIN_EMAILS="root@example.com",
     DATABASE_URL="sqlite:///" + Path(tempfile.mkdtemp(), "test.db").as_posix(),
 )
 
 from fastapi.testclient import TestClient  # noqa: E402
 from langchain_core.messages import AIMessage, AIMessageChunk  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 import main  # noqa: E402
-from db.db import Base, Scenario  # noqa: E402
+from db.db import Base, Scenario, User  # noqa: E402
 from db.session import SessionLocal, engine  # noqa: E402
 from models.evaluation import (  # noqa: E402
     Alternative,
@@ -39,7 +41,6 @@ class FakeLLM:
     def __init__(self):
         self.tokens = ["Sure", ", let's talk."]
         self.fail_after = None  # raise after this many tokens
-        self.opening = "Hello, how can I help?"
         self.fail_structured = False
         self.statuses = ["missed", "achieved"]  # per evaluation call
         self.stream_calls = 0
@@ -67,9 +68,6 @@ class FakeLLM:
     async def run(self, system_prompt, messages, response_format):
         self.record(system_prompt, messages)
 
-        if response_format is None:
-            return {"messages": [AIMessage(content=self.opening)]}
-
         self.structured_calls += 1
 
         if self.fail_structured:
@@ -89,7 +87,7 @@ class FakeLLM:
                 summary="A calm attempt.",
                 ego_state_cues=[
                     EgoStateCue(
-                        message_id="m2",
+                        message_id="m1",
                         ego_state="adult",
                         evidence="hi",
                         note="May suggest an Adult cue.",
@@ -120,12 +118,12 @@ class FakeLLM:
                 improvements=["Ask more questions"],
                 alternatives=[
                     Alternative(
-                        message_id="m2",
+                        message_id="m1",
                         suggested_response="Hello, can we talk?",
                         why="Clearer.",
                     ),
-                    Alternative(  # m1 is the AI's: must be dropped
-                        message_id="m1",
+                    Alternative(  # m2 is the AI's: must be dropped
+                        message_id="m2",
                         suggested_response="x",
                         why="y",
                     ),
@@ -149,7 +147,6 @@ class FakeLLM:
                 context="A budget talk",
                 objectives=["Be clear"],
                 stopping_conditions=["Agreement"],
-                opening_line="Let's begin.",
             ),
         )
 
@@ -217,6 +214,22 @@ def login():
         return client
 
     return _login
+
+
+@pytest.fixture
+def make_teacher(login):
+    """Return a client signed in as a teacher. Roles are read per request, so no re-login is needed."""
+
+    def _make(email):
+        client = login(email)
+
+        with SessionLocal() as db:
+            db.scalar(select(User).where(User.email == email)).role = "teacher"
+            db.commit()
+
+        return client
+
+    return _make
 
 
 @pytest.fixture

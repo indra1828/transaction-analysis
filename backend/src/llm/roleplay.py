@@ -6,7 +6,6 @@ from llm import formatting_util as fmt
 from llm import guardrails
 from llm.model import build_agent
 from llm.prompts.roleplay_character import ROLEPLAY_CHARACTER
-from llm.prompts.roleplay_opening import ROLEPLAY_OPENING
 
 END = object()  # yielded by stream_reply when the scenario has concluded
 # The character may not signal an ending before the learner has had this many
@@ -24,23 +23,6 @@ def _agent(snapshot: dict):
         temperature=0.8,
         max_tokens=1024,
     )
-
-
-async def opening_message(snapshot: dict) -> str:
-    opening_line = snapshot.get("config", {}).get("opening_line")
-
-    if opening_line:
-        return opening_line
-
-    result = await _agent(snapshot).ainvoke(
-        {"messages": [HumanMessage(ROLEPLAY_OPENING)]}
-    )
-    text = fmt.strip_end_marker(fmt.last_text(result))
-
-    if not text:
-        raise RuntimeError("AI returned an empty opening message")
-
-    return text
 
 
 async def stream_reply(snapshot: dict, history):

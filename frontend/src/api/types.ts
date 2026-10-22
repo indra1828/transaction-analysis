@@ -1,8 +1,11 @@
 // Mirrors the backend Pydantic models (src/models in the API project).
 
+export type Role = "student" | "teacher" | "superadmin";
+
 export interface User {
   id: string;
   email: string;
+  role: Role;
 }
 
 export interface ScenarioConfig {
@@ -11,7 +14,6 @@ export interface ScenarioConfig {
   context: string;
   objectives: string[];
   stopping_conditions: string[];
-  opening_line: string;
 }
 
 export interface Scenario {
@@ -19,6 +21,8 @@ export interface Scenario {
   title: string;
   config: Partial<ScenarioConfig>;
   is_public: boolean;
+  is_shared: boolean;
+  editable: boolean;
 }
 
 export interface ScenarioDraft {
@@ -41,6 +45,7 @@ export interface ScenarioDraftInput {
 export interface ScenarioUpdate {
   title?: string;
   config?: Partial<ScenarioConfig>;
+  is_shared?: boolean;
 }
 
 export type Mode = "simulation" | "guided";
@@ -49,6 +54,7 @@ export interface Thread {
   id: string;
   user_id: string;
   scenario_id: string;
+  scenario_title: string;
   mode: Mode;
   status: "active" | "completed";
   max_turns: number;
@@ -133,10 +139,6 @@ export interface Evaluation {
 }
 
 
-export interface ThreadStart extends Thread {
-  opening_message: Message;
-}
-
 export type CompletionReason = "scenario_completed" | "max_turns" | null;
 
 export interface StreamDone {
@@ -149,4 +151,42 @@ export interface StreamHandlers {
   onDelta: (content: string) => void;
   onDone: (done: StreamDone) => void;
   onError: (detail: string) => void;
+}
+
+export interface TeacherScenario {
+  id: string;
+  title: string;
+  is_shared: boolean;
+}
+
+export interface SubmissionPage {
+  items: ConversationSummary[];
+  total: number;
+}
+
+// Only submitted conversations (with a report) are listed for teachers.
+export interface ConversationSummary {
+  id: string;
+  learner_email: string;
+  mode: Mode;
+  status: Thread["status"];
+  created_at: string;
+}
+
+export interface ConversationDetail {
+  id: string;
+  learner_email: string;
+  scenario_id: string;
+  scenario_title: string;
+  mode: Mode;
+  status: Thread["status"];
+  created_at: string;
+  messages: Message[];
+  report: EvaluationReport;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: Role;
 }

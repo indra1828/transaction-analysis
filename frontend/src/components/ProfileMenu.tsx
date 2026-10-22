@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { useAuth } from "../auth/useAuth";
+import { isSuperAdmin } from "../lib/roles";
 
 // The account circle shows the first letter of the email. Its menu holds
 // the email and Sign out. Closes on outside click or Escape.
@@ -62,6 +63,16 @@ export function ProfileMenu() {
           <p className="truncate px-3 py-2 text-sm text-muted" title={user.email}>
             {user.email}
           </p>
+          {isSuperAdmin(user) && (
+            <Link
+              to="/admin/users"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-ink outline-none transition-colors hover:bg-card focus-visible:ring-3 focus-visible:ring-primary/30"
+            >
+              Users
+            </Link>
+          )}
           <button
             type="button"
             role="menuitem"

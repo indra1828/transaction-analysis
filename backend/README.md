@@ -28,6 +28,7 @@ Create `src/.env` (loaded automatically by `src/main.py`):
 | `MAX_TURNS` | no | Default turn limit per thread, default `10` |
 | `COOKIE_SECURE` | no | Set `true` behind HTTPS |
 | `FRONTEND_URL` | no | Where to send the browser after Google sign-in. Defaults to `/docs`. Set to `http://localhost:5173` for the React app |
+| `SUPERADMIN_EMAILS` | no | Comma-separated Google emails that are superadmins. Read on each sign-in (see Roles) |
 
 Do not commit `.env`. A template is in `.env.example`: copy it to `src/.env` and fill in the values.
 
@@ -62,7 +63,22 @@ export BASE=http://127.0.0.1:8000/api/v1
 export COOKIE="ta_coach_session=PASTE_VALUE_HERE"
 ```
 
-Users only see their own threads. Public scenarios are visible to everyone.
+Users only see their own threads. Built-in scenarios and teacher scenarios marked global are visible to everyone; a private teacher scenario is visible only to its creator.
+
+## Roles
+
+Each user has one role, stored on the `users` row and checked on every request:
+
+| Role | Can do |
+| --- | --- |
+| `student` | Practise any visible scenario and see their own conversations and reports |
+| `teacher` | Everything a student can, plus create scenarios (visible to all users) and review the conversations and reports of learners in the scenarios they created |
+| `superadmin` | Everything a teacher can, plus grant or remove the teacher role |
+
+- **Superadmins** come from `SUPERADMIN_EMAILS`. The variable is read on each sign-in, so a listed email is made superadmin on its next sign-in, and removing it demotes that account to student. Superadmins cannot be changed through the API, so the platform cannot lock itself out.
+- **Teachers** are granted by a superadmin with `PATCH /admin/users/{id}/role`.
+- **Reports and conversations** are visible only to the teacher who created the scenario. Another teacher, or a superadmin, gets `404` for them. This is deliberate: a learner's conversation belongs to the teacher who set the scenario.
+- A teacher's scenario can be edited or deleted only by its creator, and only while they are still a teacher. Deleting it also deletes every learner's conversation and report for it.
 
 ## End-to-end walkthrough
 
@@ -76,8 +92,7 @@ curl -s "$BASE/scenarios" -H "Cookie: $COOKIE"
 
 Scenario IDs are UUIDs, so copy the `id` of the one you want. The three seeded scenarios are *Missed Deadline*, *Defensive Employee*, and *Silent Team*.
 
-To create your own, use `POST /scenarios` with `{"title": "...", "config": {...}}`, or draft one with the LLM via `POST /scenarios/draft` (nothing is saved until you call `POST /scenarios`). Change a scenario you created with `PATCH /scenarios/{id}` (send only the fields to change, such as `{"config": {"opening_line": "..."}}`), and delete it with `DELETE /scenarios/{id}`, which also deletes its conversations and reports.
-
+Teachers create scenarios with `POST /scenarios` with `{"title": "...", "config": {...}, "is_shared": true}`. `is_shared` true makes it global; false keeps it private to the teacher. Or draft one with the LLM via `POST /scenarios/draft` (nothing is saved until you call `POST /scenarios`). Change a scenario you created with `PATCH /scenarios/{id}` (send only the fields to change, such as `{"config": {"context": "..."}}` or `{"is_shared": false}`), and delete it with `DELETE /scenarios/{id}`, which also deletes its conversations and reports.
 ### 2. Start a simulation thread
 
 ```bash
@@ -87,7 +102,7 @@ curl -s -X POST "$BASE/threads" \
   -d "{\"scenario_id\": \"$SCENARIO_ID\", \"mode\": \"simulation\"}"
 ```
 
-Returns `201` with the thread and the AI's `opening_message`. Save the thread `id`:
+Returns `201` with the thread. The learner speaks first: the character replies to the first message. Save the thread `id`:
 
 ```bash
 export THREAD="<thread id>"
@@ -192,16 +207,21 @@ All paths are under `/api/v1`, except `/health`.
 | GET | `/health` | Liveness check |
 | GET | `/auth/google/login` | Start Google sign-in |
 | GET | `/auth/google/callback` | OAuth callback (sets session) |
-| GET | `/auth/me` | Current user |
+| GET | `/auth/me` | Current user, with `role` |
 | POST | `/auth/logout` | Clear session |
-| GET | `/scenarios` | List public and own scenarios |
+| GET | `/scenarios` | List built-in, teacher-shared and own scenarios, paginated with `limit` and `offset` |
 | GET | `/scenarios/{id}` | One scenario |
-| POST | `/scenarios` | Save a private scenario |
-| POST | `/scenarios/draft` | Draft a scenario with the LLM (not saved) |
-| PATCH | `/scenarios/{id}` | Change your own scenario; built-in ones are refused |
-| DELETE | `/scenarios/{id}` | Delete your own scenario with its conversations and reports |
+| POST | `/scenarios` | Create a scenario, global or private (teachers only) |
+| POST | `/scenarios/draft` | Draft a scenario with the LLM, not saved (teachers only) |
+| PATCH | `/scenarios/{id}` | Change a scenario you created, including its visibility; built-in and other teachers' are refused |
+| DELETE | `/scenarios/{id}` | Delete a scenario you created, with its conversations and reports |
+| GET | `/teacher/scenarios` | Your scenarios with their submission count, paginated (teachers) |
+| GET | `/teacher/scenarios/{id}/conversations` | Submitted conversations (with a report) for one of your scenarios; search `q` by learner email, `sort=newest\|oldest`, paginated |
+| GET | `/teacher/conversations/{id}` | A submitted conversation's transcript and report, read-only (creator only) |
+| GET | `/admin/users` | List users and roles, paginated (superadmins) |
+| PATCH | `/admin/users/{id}/role` | Set `student` or `teacher` (superadmins) |
 | POST | `/threads` | Start a thread (`simulation` or `guided`) |
-| GET | `/threads` | Your threads, newest first |
+| GET | `/threads` | Your threads, newest first, paginated |
 | GET | `/threads/{id}` | One thread |
 | GET | `/threads/{id}/messages` | Full ordered transcript |
 | POST | `/threads/{id}/messages` | Send a message, stream the reply (SSE, simulation) |
@@ -274,7 +294,7 @@ src/llm/
   formatting_util.py    all parsing and response formatting: scenario and
                         transcript text, streamed text, end-marker handling,
                         structured output checks, evidence grounding
-  roleplay.py           character opening line and streamed replies
+  roleplay.py           character replies, streamed
   evaluator.py          whole-conversation TA report and guided turn feedback
   scenario.py           scenario draft from a description
   prompts/              one prompt per file (system prompts and the TA rules)

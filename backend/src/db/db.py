@@ -8,6 +8,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -40,6 +41,11 @@ class User(Base):
         String(255),
         unique=True,
     )
+    role: Mapped[str] = mapped_column(
+        String(20),
+        default="student",
+        server_default="student",
+    )
 
 
 class AuthSession(Base):
@@ -61,7 +67,10 @@ class Scenario(Base):
     title: Mapped[str]
     config: Mapped[dict] = mapped_column(JSON)
     created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    # Built-in scenarios: visible to everyone, changed by nobody.
     is_public: Mapped[bool] = mapped_column(default=False)
+    # Teacher scenarios: visible to everyone, changed only by their creator.
+    is_shared: Mapped[bool] = mapped_column(default=False, server_default=false())
 
 
 class Thread(Base):
@@ -91,6 +100,10 @@ class Thread(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
+
+    @property
+    def scenario_title(self) -> str:
+        return self.scenario_snapshot.get("title", "")
 
 
 class Message(Base):

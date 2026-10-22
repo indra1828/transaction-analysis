@@ -22,7 +22,10 @@ export function ConversationRow({ thread, title, onDeleted }: ConversationRowPro
 
   const menuItems = [
     ...(thread.status === "completed"
-      ? [{ label: "View report", onSelect: () => navigate(`/threads/${thread.id}/report`) }]
+      ? [
+          { label: "View report", onSelect: () => navigate(`/threads/${thread.id}/report`) },
+          { label: "View conversation", onSelect: () => navigate(`/threads/${thread.id}/report?view=conversation`) },
+        ]
       : []),
     { label: "Delete", danger: true, onSelect: () => setConfirming(true) },
   ];

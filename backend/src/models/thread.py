@@ -30,17 +30,13 @@ class ThreadResponse(BaseModel):
     id: str
     user_id: str
     scenario_id: str
+    scenario_title: str
     mode: str
     status: str
     max_turns: int
     parent_thread_id: str | None
     branch_from_message_id: str | None
     created_at: datetime
-
-
-class ThreadStartResponse(ThreadResponse):
-    opening_message: MessageResponse
-
 
 
 class TurnFeedback(BaseModel):

@@ -3,7 +3,7 @@ import os
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import DateTime, create_engine, event, inspect, text
+from sqlalchemy import Boolean, DateTime, String, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .db import Base
@@ -36,20 +36,25 @@ def _add_missing_columns() -> None:
     """Add columns that newer code expects but an existing table lacks.
 
     create_all only creates missing tables, so an existing database needs its
-    new columns added. Each entry is (table, column, type).
+    new columns added. Each entry is (table, column, type, constraints). The
+    constraints give existing rows a value when the column is NOT NULL.
     """
     additions = [
-        ("messages", "archived_at", DateTime(timezone=True)),
+        ("messages", "archived_at", DateTime(timezone=True), ""),
+        ("users", "role", String(20), "NOT NULL DEFAULT 'student'"),
+        ("scenarios", "is_shared", Boolean(), "NOT NULL DEFAULT FALSE"),
     ]
     inspector = inspect(engine)
 
     with engine.begin() as conn:
-        for table, column, column_type in additions:
+        for table, column, column_type, constraints in additions:
             existing = {col["name"] for col in inspector.get_columns(table)}
 
             if column not in existing:
                 sql_type = column_type.compile(dialect=engine.dialect)
-                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {sql_type}'))
+                conn.execute(
+                    text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type} {constraints}".rstrip())
+                )
 
 
 def init_db():

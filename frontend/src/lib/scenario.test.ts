@@ -28,7 +28,6 @@ const reviewed: DraftText = {
   context: "The report went out a day late.",
   objectives: "Understand why it was late\nAgree a plan",
   stoppingConditions: "A plan is agreed",
-  openingLine: "I know why you wanted to see me.",
 };
 
 describe("validateAnswers", () => {
@@ -73,7 +72,6 @@ describe("toDraftInput", () => {
     const input = toDraftInput(answers, reviewed, "  make the character more defensive ");
 
     expect(input.feedback).toBe("make the character more defensive");
-    expect(input.current?.config.opening_line).toBe("I know why you wanted to see me.");
     expect(input.current?.config.user_role).toBe("Team manager");
   });
 });
@@ -96,23 +94,23 @@ describe("draft review", () => {
       id: "s1",
       title: "Missed Deadline",
       is_public: false,
-      config: { user_role: "Team manager", persona: "Arjun", opening_line: "Hi", objectives: ["Agree a plan"] },
+      is_shared: false,
+      editable: true,
+      config: { user_role: "Team manager", persona: "Arjun", objectives: ["Agree a plan"] },
     });
 
     expect(text.stoppingConditions).toBe("");
     expect(text.objectives).toBe("Agree a plan");
-    expect(textToUpdate({ ...text, openingLine: " New line " }).config).toEqual({
+    expect(textToUpdate({ ...text, context: " New context " }).config).toEqual({
       persona: "Arjun",
       user_role: "Team manager",
-      context: "",
+      context: "New context",
       objectives: ["Agree a plan"],
       stopping_conditions: [],
-      opening_line: "New line",
     });
   });
 
-  it("requires an opening line and an ends-when condition", () => {
-    expect(validateDraft({ ...reviewed, openingLine: " " })).toBe("Write the AI character's opening line.");
+  it("requires an ends-when condition", () => {
     expect(validateDraft({ ...reviewed, stoppingConditions: "" })).toBe(
       "Keep at least one 'ends when' condition.",
     );

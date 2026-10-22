@@ -10,6 +10,7 @@ import { Field, TextArea } from "../components/Field";
 import { PageHeader } from "../components/PageHeader";
 import { ScenarioFields } from "../components/ScenarioFields";
 import { ScenarioForm } from "../components/ScenarioForm";
+import { VisibilityChoice } from "../components/VisibilityChoice";
 import { createScenario, draftScenario } from "../api";
 import { messageOf } from "../hooks/useAsync";
 import {
@@ -32,6 +33,7 @@ export function NewScenarioPage() {
   const [feedback, setFeedback] = useState("");
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [shared, setShared] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Writes the scenario from the answers. With `revise`, it applies the feedback to the current draft.
@@ -80,7 +82,7 @@ export function NewScenarioPage() {
 
     try {
       const scenario = textToDraft(draft);
-      const saved = await createScenario(scenario.title, scenario.config);
+      const saved = await createScenario(scenario.title, scenario.config, shared);
       navigate(`/scenarios/${saved.id}`);
     } catch (err) {
       setError(messageOf(err));
@@ -94,7 +96,7 @@ export function NewScenarioPage() {
 
       <PageHeader
         title="New Scenario"
-        description="Set up a workplace conversation to practise. Answer five questions, and the assistant writes the AI character's opening line and when the conversation ends. You can review everything before you save. Only you can see the scenarios you create."
+        description="Set up a workplace conversation to practise. Answer five questions and the assistant writes the AI character and when the conversation ends. Review everything, then choose whether every user can see it."
       />
 
       {draft ? (
@@ -123,6 +125,8 @@ export function NewScenarioPage() {
               </Button>
             </div>
           </div>
+
+          <VisibilityChoice shared={shared} onChange={setShared} />
 
           <div className="flex flex-wrap items-center gap-6">
             <Button disabled={saving || working} onClick={() => void save()} className="h-12 px-6 text-base">

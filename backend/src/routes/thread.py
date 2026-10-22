@@ -2,7 +2,7 @@ import logging
 from collections.abc import AsyncIterable
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -10,14 +10,12 @@ from sqlalchemy.exc import IntegrityError
 from db.db import Evaluation, Message, Thread
 from db.session import DbSession
 from llm.evaluator import evaluate_thread
-from llm.roleplay import opening_message
 from models.evaluation import EvaluationResponse
 from models.thread import (
     MessageCreate,
     MessageResponse,
     ThreadCreate,
     ThreadResponse,
-    ThreadStartResponse,
 )
 from oauth.dependencies import CurrentUser
 from routes.scenario import get_accessible_scenario
@@ -47,53 +45,43 @@ def get_evaluation(db, thread_id: str) -> Evaluation | None:
 
 @router.post(
     "",
-    response_model=ThreadStartResponse,
+    response_model=ThreadResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_thread(
+def create_thread(
     data: ThreadCreate,
     user: CurrentUser,
     db: DbSession,
 ):
+    """Start a conversation. The learner speaks first."""
     scenario = get_accessible_scenario(db, data.scenario_id, user.id)
-    snapshot = {"title": scenario.title, "config": scenario.config}
-
-    try:
-        opening = await opening_message(snapshot)
-    except Exception as exc:
-        logger.exception("Could not generate the opening message")
-        raise HTTPException(
-            502, "Could not start the conversation. Please try again."
-        ) from exc
-
     thread = Thread(
         user_id=user.id,
         scenario_id=scenario.id,
-        scenario_snapshot=snapshot,
+        scenario_snapshot={"title": scenario.title, "config": scenario.config},
         mode=data.mode,
         max_turns=data.max_turns or default_max_turns(),
     )
     db.add(thread)
-    db.flush()
-
-    message = Message(thread_id=thread.id, role="assistant", content=opening)
-    db.add(message)
     db.commit()
     db.refresh(thread)
-    db.refresh(message)
 
-    return ThreadStartResponse(
-        **ThreadResponse.model_validate(thread).model_dump(),
-        opening_message=MessageResponse.model_validate(message),
-    )
+    return thread
 
 
 @router.get("", response_model=list[ThreadResponse])
-def list_threads(user: CurrentUser, db: DbSession):
+def list_threads(
+    user: CurrentUser,
+    db: DbSession,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
     return db.scalars(
         select(Thread)
         .where(Thread.user_id == user.id)
-        .order_by(Thread.created_at.desc())
+        .order_by(Thread.created_at.desc(), Thread.id)
+        .limit(limit)
+        .offset(offset)
     ).all()
 
 

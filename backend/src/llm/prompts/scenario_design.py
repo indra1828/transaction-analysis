@@ -29,8 +29,6 @@ items. Keep the meaning of each goal.
 - stopping_conditions: one to three observable conditions that mean the \
 conversation has naturally ended, for example "A date for the next report is \
 agreed". Do not use vague conditions such as "the talk goes well".
-- opening_line: the character's first line of dialogue, in character, one or \
-two sentences, that fits the background and does not give the answer away.
 </task>
 
 <constraints>

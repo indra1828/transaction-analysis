@@ -11,6 +11,7 @@ from db.db import User
 from db.session import DbSession
 from oauth.dependencies import CurrentUser
 from oauth.google import oauth
+from oauth.roles import role_after_sign_in
 from oauth.sessions import end_session, start_session
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -77,6 +78,12 @@ async def google_callback(request: Request, db: DbSession):
                 409, "Account already exists"
             ) from exc
 
+    role = role_after_sign_in(email, user.role)
+
+    if role != user.role:
+        user.role = role
+        db.commit()
+
     start_session(request, db, user.id)
 
     return RedirectResponse(url=os.getenv("FRONTEND_URL", "/docs"))
@@ -87,6 +94,7 @@ def get_me(user: CurrentUser):
     return {
         "id": user.id,
         "email": user.email,
+        "role": user.role,
     }
 
 

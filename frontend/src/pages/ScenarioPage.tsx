@@ -3,12 +3,12 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { Alert } from "../components/Alert";
-import { Badge } from "../components/Badge";
 import { BackLink } from "../components/BackLink";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Field, TextInput } from "../components/Field";
+import { ScenarioBadge } from "../components/ScenarioBadge";
 import { Spinner } from "../components/Spinner";
 import { buttonClasses } from "../components/buttonStyles";
 import { deleteScenario, getScenario, startThread } from "../api";
@@ -50,7 +50,7 @@ export function ScenarioPage() {
     );
   }
 
-  const { title, config, is_public } = scenario.data;
+  const { title, config, editable } = scenario.data;
 
   const start = async (event: FormEvent) => {
     event.preventDefault();
@@ -72,8 +72,8 @@ export function ScenarioPage() {
         <div className="flex flex-col gap-4">
           <BackLink to="/">All scenarios</BackLink>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <Badge tone={is_public ? "neutral" : "primary"}>{is_public ? "Built-in" : "Yours"}</Badge>
-            {!is_public && (
+            <ScenarioBadge scenario={scenario.data} />
+            {editable && (
               <div className="flex items-center gap-5">
                 <Link to={`/scenarios/${id}/edit`} className={buttonClasses("text", "text-sm")}>
                   Edit
@@ -110,12 +110,6 @@ export function ScenarioPage() {
             {config.context && <Detail label="Situation" text={config.context} />}
             {config.user_role && <Detail label="You are" text={config.user_role} />}
             {config.persona && <Detail label="AI Character" text={config.persona} />}
-            {config.opening_line && (
-              <div className="flex flex-col gap-2">
-                <dt className="text-xs font-medium uppercase tracking-widest text-muted">Opening line</dt>
-                <dd className="font-display text-2xl leading-snug text-ink">“{config.opening_line}”</dd>
-              </div>
-            )}
             {config.objectives && config.objectives.length > 0 && (
               <ListDetail label="Objectives" items={config.objectives} />
             )}

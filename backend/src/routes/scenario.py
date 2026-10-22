@@ -1,20 +1,20 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, HTTPException, Query, status
+from sqlalchemy import func, or_, select
 
-from db.db import Scenario, Thread
+from db.db import Scenario, Thread, User
 from db.session import DbSession
 from llm import guardrails
 from llm.scenario import draft_scenario
 from models.scenario import (
-    ScenarioCreate,
+    ScenarioCreateRequest,
     ScenarioDraft,
     ScenarioDraftRequest,
     ScenarioResponse,
     ScenarioUpdate,
 )
-from oauth.dependencies import CurrentUser
+from oauth.dependencies import CurrentTeacher, CurrentUser
 from services.threads import delete_thread_tree, is_generating
 
 logger = logging.getLogger(__name__)
@@ -22,13 +22,30 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/scenarios", tags=["Scenarios"])
 
 
+def is_visible(scenario: Scenario, user_id: str) -> bool:
+    return scenario.is_public or scenario.is_shared or scenario.created_by == user_id
+
+
+def is_creator(scenario: Scenario, user_id: str) -> bool:
+    return not scenario.is_public and scenario.created_by == user_id
+
+
+def scenario_response(scenario: Scenario, user: User) -> ScenarioResponse:
+    return ScenarioResponse(
+        id=scenario.id,
+        title=scenario.title,
+        config=scenario.config,
+        is_public=scenario.is_public,
+        is_shared=scenario.is_shared,
+        editable=is_creator(scenario, user.id),
+    )
+
+
 def get_accessible_scenario(db, scenario_id: str, user_id: str) -> Scenario:
-    """Return a public scenario or one created by the user."""
+    """Return a built-in scenario, a teacher's shared scenario, or one the user created."""
     scenario = db.get(Scenario, scenario_id)
 
-    if scenario is None or not (
-        scenario.is_public or scenario.created_by == user_id
-    ):
+    if scenario is None or not is_visible(scenario, user_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Scenario not found",
@@ -38,7 +55,7 @@ def get_accessible_scenario(db, scenario_id: str, user_id: str) -> Scenario:
 
 
 def get_owned_scenario(db, scenario_id: str, user_id: str) -> Scenario:
-    """Return a scenario the user created. Built-in scenarios cannot be changed."""
+    """Return a scenario the user created. Built-in and other people's scenarios cannot be changed."""
     scenario = get_accessible_scenario(db, scenario_id, user_id)
 
     if scenario.is_public:
@@ -47,7 +64,24 @@ def get_owned_scenario(db, scenario_id: str, user_id: str) -> Scenario:
             detail="Built-in scenarios cannot be changed",
         )
 
+    if scenario.created_by != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the teacher who created this scenario can change it",
+        )
+
     return scenario
+
+
+def ensure_unique_title(db, title: str, scenario_id: str | None = None) -> None:
+    """Scenario names are unique across the platform, ignoring case."""
+    statement = select(Scenario.id).where(func.lower(Scenario.title) == title.lower())
+
+    if scenario_id is not None:
+        statement = statement.where(Scenario.id != scenario_id)
+
+    if db.scalar(statement) is not None:
+        raise HTTPException(409, "A scenario with this name already exists. Choose another name.")
 
 
 def _strings(values):
@@ -60,20 +94,32 @@ def _strings(values):
 
 
 @router.get("", response_model=list[ScenarioResponse])
-def list_scenarios(user: CurrentUser, db: DbSession):
-    return db.scalars(
-        select(Scenario).where(
+def list_scenarios(
+    user: CurrentUser,
+    db: DbSession,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    scenarios = db.scalars(
+        select(Scenario)
+        .where(
             or_(
                 Scenario.is_public.is_(True),
+                Scenario.is_shared.is_(True),
                 Scenario.created_by == user.id,
             )
         )
+        .order_by(Scenario.title, Scenario.id)
+        .limit(limit)
+        .offset(offset)
     ).all()
+
+    return [scenario_response(scenario, user) for scenario in scenarios]
 
 
 @router.get("/{id}", response_model=ScenarioResponse)
 def get_scenario(id: str, user: CurrentUser, db: DbSession):
-    return get_accessible_scenario(db, id, user.id)
+    return scenario_response(get_accessible_scenario(db, id, user.id), user)
 
 
 @router.post(
@@ -82,21 +128,25 @@ def get_scenario(id: str, user: CurrentUser, db: DbSession):
     status_code=status.HTTP_201_CREATED,
 )
 def create_scenario(
-    data: ScenarioCreate,
+    data: ScenarioCreateRequest,
     db: DbSession,
-    user: CurrentUser,
+    teacher: CurrentTeacher,
 ):
+    """Create a scenario. Only teachers can, and it is shared with every user unless is_shared is false."""
+    ensure_unique_title(db, data.title)
     scenario = Scenario(
-        **data.model_dump(),
-        created_by=user.id,
+        title=data.title,
+        config=data.config,
+        created_by=teacher.id,
         is_public=False,
+        is_shared=data.is_shared,
     )
 
     db.add(scenario)
     db.commit()
     db.refresh(scenario)
 
-    return scenario
+    return scenario_response(scenario, teacher)
 
 
 @router.patch("/{id}", response_model=ScenarioResponse)
@@ -118,7 +168,11 @@ def update_scenario(
         raise HTTPException(422, "Describe a workplace conversation to practise.")
 
     if data.title is not None:
+        ensure_unique_title(db, data.title, scenario.id)
         scenario.title = data.title
+
+    if data.is_shared is not None:
+        scenario.is_shared = data.is_shared
 
     if changes:
         # A new dict, so SQLAlchemy sees the JSON change.
@@ -127,7 +181,7 @@ def update_scenario(
     db.commit()
     db.refresh(scenario)
 
-    return scenario
+    return scenario_response(scenario, user)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -152,8 +206,8 @@ def delete_scenario(id: str, user: CurrentUser, db: DbSession):
 
 
 @router.post("/draft", response_model=ScenarioDraft)
-async def create_draft(data: ScenarioDraftRequest, user: CurrentUser):
-    """Draft the rest of a scenario from the learner's answers.
+async def create_draft(data: ScenarioDraftRequest, teacher: CurrentTeacher):
+    """Draft the rest of a scenario from the teacher's answers.
 
     Nothing is saved. Review the draft, send feedback to revise it (pass the
     draft back as `current`), then save it with POST /scenarios.

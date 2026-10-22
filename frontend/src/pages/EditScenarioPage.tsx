@@ -7,6 +7,7 @@ import { Button } from "../components/Button";
 import { buttonClasses } from "../components/buttonStyles";
 import { PageHeader } from "../components/PageHeader";
 import { ScenarioFields } from "../components/ScenarioFields";
+import { VisibilityChoice } from "../components/VisibilityChoice";
 import { Spinner } from "../components/Spinner";
 import { getScenario, updateScenario } from "../api";
 import type { Scenario } from "../api";
@@ -14,7 +15,7 @@ import { messageOf, useAsync } from "../hooks/useAsync";
 import { scenarioToText, textToUpdate, validateDraft } from "../lib/scenario";
 import type { DraftText } from "../lib/scenario";
 
-// Edits a scenario the user created. Changes apply to new conversations only;
+// Edits a scenario its creator made. Changes apply to new conversations only;
 // conversations already started keep the scenario they began with.
 export function EditScenarioPage() {
   const { id = "" } = useParams();
@@ -31,11 +32,11 @@ export function EditScenarioPage() {
     );
   }
 
-  if (scenario.data.is_public) {
+  if (!scenario.data.editable) {
     return (
       <div className="flex flex-col gap-6">
         <BackLink to={`/scenarios/${id}`}>Back to scenario</BackLink>
-        <Alert>Built-in scenarios cannot be changed.</Alert>
+        <Alert>Only the teacher who created this scenario can change it.</Alert>
       </div>
     );
   }
@@ -46,6 +47,7 @@ export function EditScenarioPage() {
 function ScenarioEditor({ scenario }: { scenario: Scenario }) {
   const navigate = useNavigate();
   const [text, setText] = useState<DraftText>(() => scenarioToText(scenario));
+  const [shared, setShared] = useState(scenario.is_shared);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +63,7 @@ function ScenarioEditor({ scenario }: { scenario: Scenario }) {
     setError(null);
 
     try {
-      await updateScenario(scenario.id, textToUpdate(text));
+      await updateScenario(scenario.id, { ...textToUpdate(text), is_shared: shared });
       navigate(`/scenarios/${scenario.id}`);
     } catch (err) {
       setError(messageOf(err));
@@ -83,6 +85,8 @@ function ScenarioEditor({ scenario }: { scenario: Scenario }) {
         className="flex flex-col gap-8 rounded-lg bg-card p-6 sm:p-8"
       >
         <ScenarioFields value={text} onChange={setText} />
+
+        <VisibilityChoice shared={shared} onChange={setShared} />
 
         {error && <Alert>{error}</Alert>}
 

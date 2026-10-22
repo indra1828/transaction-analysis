@@ -46,7 +46,7 @@ async function sendReplyThatReachesAnEnding() {
 beforeEach(() => {
   vi.mocked(getThread).mockResolvedValue(thread as never);
   vi.mocked(listMessages).mockResolvedValue([]);
-  vi.mocked(getScenario).mockResolvedValue({ id: "s1", title: "Missed deadline", config: {}, is_public: true });
+  vi.mocked(getScenario).mockResolvedValue({ id: "s1", title: "Missed deadline", config: {}, is_public: true, is_shared: false, editable: false });
   vi.mocked(streamMessage).mockImplementation(async (_id, _text, handlers) => {
     handlers.onDelta("Thanks, that helps.");
     handlers.onDone({ message_id: "m1", thread_status: "active", completion_reason: "scenario_completed" });

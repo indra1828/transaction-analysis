@@ -23,7 +23,6 @@ def test_structured_responses_are_cleaned_before_validation():
                 context="Late report — again",
                 objectives=["Explain the delay — honestly"],
                 stopping_conditions=["A plan is agreed"],
-                opening_line="Sorry — I can explain.",
             ),
         )
     }

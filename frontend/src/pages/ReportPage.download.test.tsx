@@ -43,7 +43,7 @@ beforeEach(() => {
     max_turns: 20,
     created_at: "2026-10-14T10:00:00Z",
   } as never);
-  vi.mocked(getScenario).mockResolvedValue({ id: "s1", title: "Missed deadline", config: {}, is_public: true });
+  vi.mocked(getScenario).mockResolvedValue({ id: "s1", title: "Missed deadline", config: {}, is_public: true, is_shared: false, editable: false });
   vi.mocked(listMessages).mockResolvedValue([]);
   vi.mocked(getEvaluation).mockResolvedValue({ thread_id: "t1", report } as never);
 

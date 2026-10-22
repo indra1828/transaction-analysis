@@ -25,7 +25,6 @@ export interface DraftText {
   context: string;
   objectives: string;
   stoppingConditions: string;
-  openingLine: string;
 }
 
 export function lines(text: string): string[] {
@@ -45,6 +44,7 @@ export function validateAnswers(answers: ScenarioAnswers): string | null {
   if (!answers.yourRole.trim()) return "Tell us which role you are.";
   if (!answers.theirRole.trim()) return "Tell us which role the AI character plays.";
   if (!answers.situation.trim()) return "Describe the scenario.";
+  if (answers.situation.trim().length < 10) return "Describe the scenario in at least 10 characters.";
   if (goalList(answers).length === 0) return "Add at least one goal.";
 
   return null;
@@ -87,7 +87,6 @@ function configToText(title: string, config: Partial<ScenarioConfig>): DraftText
     context: config.context ?? "",
     objectives: (config.objectives ?? []).join("\n"),
     stoppingConditions: (config.stopping_conditions ?? []).join("\n"),
-    openingLine: config.opening_line ?? "",
   };
 }
 
@@ -97,7 +96,6 @@ export function validateDraft(text: DraftText): string | null {
   if (!text.yourRole.trim()) return "Tell us which role you are.";
   if (!text.persona.trim()) return "Describe the AI character.";
   if (!text.context.trim()) return "Describe the scenario.";
-  if (!text.openingLine.trim()) return "Write the AI character's opening line.";
   if (lines(text.objectives).length === 0) return "Keep at least one goal.";
   if (lines(text.stoppingConditions).length === 0) return "Keep at least one 'ends when' condition.";
 
@@ -122,6 +120,5 @@ function textToConfig(text: DraftText): ScenarioConfig {
     context: text.context.trim(),
     objectives: lines(text.objectives),
     stopping_conditions: lines(text.stoppingConditions),
-    opening_line: text.openingLine.trim(),
   };
 }

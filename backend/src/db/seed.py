@@ -30,10 +30,6 @@ SCENARIOS = [
                 "A clear follow-up plan has been agreed",
                 "The conversation has broken down",
             ],
-            "opening_line": (
-                "I know why you wanted to see me. I'm really sorry "
-                "about the report, I can explain everything."
-            ),
         },
     },
     {
@@ -60,10 +56,6 @@ SCENARIOS = [
                 "Meera agrees to a concrete change in approach",
                 "The conversation has broken down",
             ],
-            "opening_line": (
-                "You wanted to talk about my design? I followed the "
-                "brief exactly, so I'm not sure what the problem is."
-            ),
         },
     },
     {
@@ -90,10 +82,6 @@ SCENARIOS = [
                 "A concrete step to encourage speaking up is agreed",
                 "The conversation has broken down",
             ],
-            "opening_line": (
-                "Sure, happy to chat. Everything is going fine on our "
-                "side, as far as I know."
-            ),
         },
     },
 ]

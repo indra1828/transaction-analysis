@@ -20,7 +20,6 @@ const draft = {
     context: "The report went out late.",
     objectives: ["Understand the delay"],
     stopping_conditions: ["A plan is agreed"],
-    opening_line: "I know why you wanted to see me.",
   },
 };
 
@@ -59,7 +58,7 @@ describe("NewScenarioPage", () => {
     expect(await screen.findByRole("heading", { name: "Review the scenario" })).toBeTruthy();
     expect(screen.queryByLabelText("What you want to achieve")).toBeNull();
     expect(screen.queryByRole("button", { name: "Create scenario" })).toBeNull();
-    expect(screen.getByLabelText("Opening line")).toBeTruthy();
+    expect(screen.getByLabelText("Ends when")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Update the scenario" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save scenario" })).toBeTruthy();
   });

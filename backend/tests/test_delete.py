@@ -45,8 +45,8 @@ def add_legacy_branch(parent_id):
         return child.id
 
 
-def test_delete_removes_conversation_report_edit_history_and_legacy_branches(login, api, make_public_scenario):
-    owner = login("a@example.com")
+def test_delete_removes_conversation_report_edit_history_and_legacy_branches(make_teacher, login, api, make_public_scenario):
+    owner = make_teacher("a@example.com")
     scenario_id = make_public_scenario()
     thread_id = api.start(owner, scenario_id).json()["id"]
     api.send(owner, thread_id, "One")
@@ -71,8 +71,8 @@ def test_delete_removes_conversation_report_edit_history_and_legacy_branches(log
     assert owner.get(f"{API}/threads/{thread_id}").status_code == 404
 
 
-def test_delete_removes_guided_turns(login, api, make_public_scenario):
-    owner = login("a@example.com")
+def test_delete_removes_guided_turns(make_teacher, login, api, make_public_scenario):
+    owner = make_teacher("a@example.com")
     thread_id = api.start(owner, make_public_scenario(), mode="guided").json()["id"]
     assert owner.post(f"{API}/threads/{thread_id}/turns", json={"content": "A draft"}).status_code == 201
 
@@ -82,8 +82,8 @@ def test_delete_removes_guided_turns(login, api, make_public_scenario):
     assert stored([thread_id]) == EMPTY
 
 
-def test_delete_keeps_other_conversations_and_the_scenario(login, api, make_public_scenario):
-    owner = login("a@example.com")
+def test_delete_keeps_other_conversations_and_the_scenario(make_teacher, login, api, make_public_scenario):
+    owner = make_teacher("a@example.com")
     scenario_id = make_public_scenario()
     doomed = api.start(owner, scenario_id).json()["id"]
     kept = api.start(owner, scenario_id).json()["id"]
@@ -96,8 +96,8 @@ def test_delete_keeps_other_conversations_and_the_scenario(login, api, make_publ
     assert owner.get(f"{API}/scenarios/{scenario_id}").status_code == 200
 
 
-def test_another_user_cannot_delete_and_nothing_is_removed(login, api, make_public_scenario):
-    owner = login("a@example.com")
+def test_another_user_cannot_delete_and_nothing_is_removed(make_teacher, login, api, make_public_scenario):
+    owner = make_teacher("a@example.com")
     intruder = login("b@example.com")
     thread_id = api.start(owner, make_public_scenario()).json()["id"]
     api.send(owner, thread_id, "Mine")
@@ -107,14 +107,14 @@ def test_another_user_cannot_delete_and_nothing_is_removed(login, api, make_publ
     assert stored([thread_id]) == before
 
 
-def test_delete_unknown_conversation_is_404(login):
-    owner = login("a@example.com")
+def test_delete_unknown_conversation_is_404(make_teacher, login):
+    owner = make_teacher("a@example.com")
 
     assert owner.delete(f"{API}/threads/does-not-exist").status_code == 404
 
 
-def test_delete_is_refused_while_a_reply_is_generating(login, api, make_public_scenario):
-    owner = login("a@example.com")
+def test_delete_is_refused_while_a_reply_is_generating(make_teacher, login, api, make_public_scenario):
+    owner = make_teacher("a@example.com")
     thread_id = api.start(owner, make_public_scenario()).json()["id"]
     with SessionLocal() as db:
         db.get(Thread, thread_id).generating_since = utc_now()
